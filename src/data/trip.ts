@@ -9,6 +9,11 @@ export interface Booking {
   notes?: string;
   link?: string;
   status: 'confirmed' | 'pending' | 'todo';
+  // Train specific
+  carriage?: string;
+  seat?: string;
+  class?: string;
+  ticketPdf?: string;
 }
 
 export interface Activity {
@@ -63,9 +68,12 @@ export const tripData: DayPlan[] = [
         code: "L8DZY5",
         time: "16:10 → 21:00",
         address: "Roma Termini → Torino Porta Nuova",
-        notes: "Carrozza 2, Posto 8D • Business",
+        carriage: "2",
+        seat: "8D",
+        class: "Business",
         price: "€115.90",
-        status: 'confirmed'
+        status: 'confirmed',
+        ticketPdf: "/tickets/frecciarossa-9588.pdf"
       },
       {
         type: 'hotel',
@@ -112,8 +120,9 @@ export const tripData: DayPlan[] = [
         time: "~06:30 da Torino Porta Susa",
         address: "Torino Porta Susa → Paris Gare de Lyon",
         price: "€134.00",
-        notes: "Prima classe",
-        status: 'confirmed'
+        class: "Prima classe",
+        status: 'confirmed',
+        ticketPdf: "/tickets/tgv-9242.pdf"
       },
       {
         type: 'train',
@@ -121,9 +130,10 @@ export const tripData: DayPlan[] = [
         code: "47ZU26",
         time: "14:05 → ~16:30",
         address: "Paris Montparnasse → Bordeaux Saint-Jean",
-        notes: "Cambio stazione a Parigi (metro/taxi)",
+        notes: "⚠️ Cambio stazione a Parigi (metro/taxi)",
         price: "€110.00",
-        status: 'confirmed'
+        status: 'confirmed',
+        ticketPdf: "/tickets/tgv-12265.pdf"
       },
       {
         type: 'car',

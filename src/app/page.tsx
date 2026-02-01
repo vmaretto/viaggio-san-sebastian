@@ -264,13 +264,49 @@ export default function Home() {
                       <div className="space-y-3">
                         <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Prenotazioni</h4>
                         {day.bookings.map((booking, bIndex) => (
-                          <div key={bIndex} className="bg-white/5 rounded-xl p-4 space-y-2">
+                          <div key={bIndex} className={`rounded-xl p-4 space-y-2 ${booking.type === 'train' ? 'bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20' : 'bg-white/5'}`}>
                             <div className="flex items-start justify-between">
                               <div className="font-semibold">{booking.name}</div>
                               <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(booking.status)}`}>
                                 {getStatusText(booking.status)}
                               </span>
                             </div>
+                            
+                            {/* Train: Carriage & Seat - BIG AND PROMINENT */}
+                            {booking.type === 'train' && (booking.carriage || booking.seat) && (
+                              <div className="flex gap-3 my-2">
+                                {booking.carriage && (
+                                  <div className="bg-red-500 text-white px-4 py-2 rounded-lg text-center">
+                                    <div className="text-xs opacity-80">Carrozza</div>
+                                    <div className="text-2xl font-bold">{booking.carriage}</div>
+                                  </div>
+                                )}
+                                {booking.seat && (
+                                  <div className="bg-orange-500 text-white px-4 py-2 rounded-lg text-center">
+                                    <div className="text-xs opacity-80">Posto</div>
+                                    <div className="text-2xl font-bold">{booking.seat}</div>
+                                  </div>
+                                )}
+                                {booking.class && (
+                                  <div className="bg-white/10 px-4 py-2 rounded-lg text-center flex items-center">
+                                    <div className="text-sm text-gray-300">{booking.class}</div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            
+                            {/* Train: Ticket PDF Button */}
+                            {booking.type === 'train' && booking.ticketPdf && (
+                              <a 
+                                href={booking.ticketPdf}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                              >
+                                🎫 Apri Biglietto
+                              </a>
+                            )}
+                            
                             {booking.code && (
                               <div className="flex items-center gap-2">
                                 <span className="text-gray-400 text-sm">Codice:</span>
