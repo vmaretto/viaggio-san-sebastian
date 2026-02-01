@@ -73,7 +73,7 @@ export const tripData: DayPlan[] = [
         class: "Business",
         price: "€115.90",
         status: 'confirmed',
-        ticketPdf: "/tickets/frecciarossa-9588.pdf"
+        ticketPdf: "/tickets/Virgilio-Maretto-2737474616.pdf"
       },
       {
         type: 'hotel',
