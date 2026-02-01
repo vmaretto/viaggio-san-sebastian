@@ -205,15 +205,53 @@ export const yourPresentations = [
         duration: "15 min",
         presenters: ["Virgilio Maretto", "Marco Pizzuto"],
         organization: "CMCC/POSTI",
-        description: "Demonstration and usage of Data Lake, data upload exercise, communication with Smart Counter"
+        description: "Demonstration and usage of Data Lake, data upload exercise, communication with Smart Counter",
+        apps: [
+          {
+            name: "Mini Orto",
+            description: "Use case SCIO + webapp per monitoraggio orto",
+            url: "https://mini-orto.vercel.app",
+            github: "https://github.com/vmaretto/MiniOrto",
+            icon: "🌱"
+          }
+        ]
       },
       {
         title: "MyFreshFood Spectrometer",
         duration: "15 min", 
         presenters: ["Virgilio Maretto", "Marco Pizzuto"],
         organization: "POSTI",
-        description: "Demonstration of the spectrometer and its use at MakerFaire 2025"
+        description: "Demonstration of the spectrometer and its use at MakerFaire 2025",
+        apps: [
+          {
+            name: "Sugar Detective",
+            description: "App per analisi spettrometrica degli zuccheri",
+            url: "https://sugar-detective.vercel.app",
+            github: "https://github.com/vmaretto/sugar-detective",
+            icon: "🔬"
+          }
+        ]
       }
     ]
+  }
+];
+
+// Demo apps for presentations
+export const demoApps = [
+  {
+    name: "Sugar Detective",
+    description: "App per analisi spettrometrica degli zuccheri (SCIO)",
+    url: "https://sugar-detective.vercel.app",
+    github: "https://github.com/vmaretto/sugar-detective",
+    icon: "🔬",
+    presentation: "MyFreshFood Spectrometer"
+  },
+  {
+    name: "Mini Orto",
+    description: "Use case SCIO + webapp per monitoraggio orto",
+    url: "https://mini-orto.vercel.app",
+    github: "https://github.com/vmaretto/MiniOrto",
+    icon: "🌱",
+    presentation: "Data Lake + Smart Counter"
   }
 ];

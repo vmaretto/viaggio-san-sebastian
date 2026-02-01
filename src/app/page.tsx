@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { tripData as initialTripData, sanSebastianGuide, torinoRestaurants, readingList, entertainment, DayPlan, Booking, Activity } from '@/data/trip';
-import { switchInfo, switchAgenda, yourPresentations } from '@/data/switch';
+import { switchInfo, switchAgenda, yourPresentations, demoApps } from '@/data/switch';
 
 // ============================================
 // STORAGE HOOK - Persistenza localStorage
@@ -346,8 +346,15 @@ export default function Home() {
   const [customActivities, setCustomActivities] = useLocalStorage<Record<number, CustomActivity[]>>('trip-custom-activities', {});
   const [editedBookings, setEditedBookings] = useLocalStorage<Record<string, Partial<Booking>>>('trip-edited-bookings', {});
   
+  // Custom items for other tabs
+  const [customPintxos, setCustomPintxos] = useLocalStorage<Array<{id: string; name: string; specialty: string; area: string}>>('trip-custom-pintxos', []);
+  const [customMustSee, setCustomMustSee] = useLocalStorage<Array<{id: string; name: string; description: string; time: string}>>('trip-custom-mustsee', []);
+  const [customBilbao, setCustomBilbao] = useLocalStorage<Array<{id: string; name: string; description: string}>>('trip-custom-bilbao', []);
+  const [customFilms, setCustomFilms] = useLocalStorage<Array<{id: string; title: string; genre: string; duration: string; description: string; streaming: string}>>('trip-custom-films', []);
+  const [switchNotes, setSwitchNotes] = useLocalStorage<string>('trip-switch-notes', '');
+  
   // Modal state
-  const [editModal, setEditModal] = useState<{ type: 'note' | 'booking' | 'activity' | 'editBooking'; dayIndex: number; booking?: CustomBooking } | null>(null);
+  const [editModal, setEditModal] = useState<{ type: 'note' | 'booking' | 'activity' | 'editBooking' | 'pintxo' | 'mustSee' | 'bilbaoPlace' | 'film' | 'switchNote'; dayIndex: number; booking?: CustomBooking } | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
 
   // ============================================
@@ -604,10 +611,80 @@ export default function Home() {
                       <div className="font-medium">{item.title}</div>
                       <div className="text-xs text-gray-400">{item.duration} • {item.presenters.join(', ')}</div>
                       <p className="text-sm text-gray-300 mt-1">{item.description}</p>
+                      {item.apps && item.apps.length > 0 && (
+                        <div className="mt-2 space-y-2">
+                          {item.apps.map((app: { icon: string; name: string; description: string; url: string; github: string }, aIndex: number) => (
+                            <div key={aIndex} className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-2">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span>{app.icon}</span>
+                                <span className="font-medium text-blue-300">{app.name}</span>
+                              </div>
+                              <p className="text-xs text-gray-400 mb-2">{app.description}</p>
+                              <div className="flex gap-2">
+                                <a 
+                                  href={app.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full inline-flex items-center gap-1"
+                                >
+                                  🚀 Apri App
+                                </a>
+                                <a 
+                                  href={app.github}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs bg-gray-600 hover:bg-gray-500 text-white px-3 py-1 rounded-full inline-flex items-center gap-1"
+                                >
+                                  📂 GitHub
+                                </a>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               ))}
+            </div>
+
+            {/* Demo Apps Quick Access */}
+            <div className="space-y-3">
+              <h3 className="text-lg font-bold">📱 App per le Demo</h3>
+              <div className="grid grid-cols-1 gap-3">
+                {demoApps.map((app, index) => (
+                  <div key={index} className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="text-3xl">{app.icon}</div>
+                        <div>
+                          <div className="font-semibold">{app.name}</div>
+                          <p className="text-sm text-gray-400">{app.description}</p>
+                          <p className="text-xs text-amber-400 mt-1">📍 {app.presentation}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      <a 
+                        href={app.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 text-center bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                      >
+                        🚀 Apri App
+                      </a>
+                      <a 
+                        href={app.github}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                      >
+                        📂
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Agenda by Day */}
@@ -1028,16 +1105,28 @@ export default function Home() {
 
             {/* Pintxos Bars */}
             <div className="space-y-3">
-              <h3 className="text-lg font-bold flex items-center gap-2">🍢 Pintxos Bars</h3>
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold flex items-center gap-2">🍢 Pintxos Bars</h3>
+                <button
+                  onClick={() => {
+                    setFormData({});
+                    setEditModal({ type: 'pintxo', dayIndex: 0 });
+                  }}
+                  className="text-xs bg-amber-500/20 text-amber-400 px-3 py-1 rounded-full hover:bg-amber-500/30"
+                >
+                  + Aggiungi
+                </button>
+              </div>
               <p className="text-sm text-gray-400">Il giro dei pintxos nella Parte Vieja è un must!</p>
               <div className="grid gap-3">
-                {sanSebastianGuide.pintxosBars.map((bar, index) => {
+                {[...sanSebastianGuide.pintxosBars, ...customPintxos].map((bar, index) => {
+                  const isCustom = 'id' in bar;
                   const barId = `bar-${index}`;
                   const isFav = favorites.has(barId);
                   const isVisited = visited.has(barId);
                   
                   return (
-                    <div key={index} className={`bg-white/5 rounded-xl p-4 flex justify-between items-start ${isVisited ? 'opacity-60' : ''}`}>
+                    <div key={isCustom ? (bar as {id: string}).id : index} className={`bg-white/5 rounded-xl p-4 flex justify-between items-start ${isVisited ? 'opacity-60' : ''} ${isCustom ? 'border-l-4 border-l-amber-500' : ''}`}>
                       <div>
                         <div className="font-semibold flex items-center gap-2">
                           {bar.name}
@@ -1068,6 +1157,14 @@ export default function Home() {
                         >
                           🗺️
                         </a>
+                        {isCustom && (
+                          <button
+                            onClick={() => setCustomPintxos(customPintxos.filter(p => p.id !== (bar as {id: string}).id))}
+                            className="p-2 rounded-lg text-red-400 hover:text-red-300 bg-white/10"
+                          >
+                            🗑️
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -1077,15 +1174,27 @@ export default function Home() {
 
             {/* Must See */}
             <div className="space-y-3">
-              <h3 className="text-lg font-bold flex items-center gap-2">📸 Da non perdere</h3>
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold flex items-center gap-2">📸 Da non perdere</h3>
+                <button
+                  onClick={() => {
+                    setFormData({});
+                    setEditModal({ type: 'mustSee', dayIndex: 0 });
+                  }}
+                  className="text-xs bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full hover:bg-purple-500/30"
+                >
+                  + Aggiungi
+                </button>
+              </div>
               <div className="grid gap-3">
-                {sanSebastianGuide.mustSee.map((place, index) => {
-                  const placeId = `must-${index}`;
+                {[...sanSebastianGuide.mustSee, ...customMustSee].map((place, index) => {
+                  const isCustom = 'id' in place;
+                  const placeId = `must-${isCustom ? (place as {id: string}).id : index}`;
                   const isFav = favorites.has(placeId);
                   const isVisited = visited.has(placeId);
                   
                   return (
-                    <div key={index} className={`bg-white/5 rounded-xl p-4 ${isVisited ? 'opacity-60' : ''}`}>
+                    <div key={isCustom ? (place as {id: string}).id : index} className={`bg-white/5 rounded-xl p-4 ${isVisited ? 'opacity-60' : ''} ${isCustom ? 'border-l-4 border-l-purple-500' : ''}`}>
                       <div className="flex justify-between items-start">
                         <div>
                           <div className="font-semibold flex items-center gap-2">
@@ -1109,6 +1218,14 @@ export default function Home() {
                           >
                             ✓
                           </button>
+                          {isCustom && (
+                            <button
+                              onClick={() => setCustomMustSee(customMustSee.filter(p => p.id !== (place as {id: string}).id))}
+                              className="p-1.5 rounded-lg text-red-400 hover:text-red-300 bg-white/10"
+                            >
+                              🗑️
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1175,19 +1292,32 @@ export default function Home() {
             </div>
 
             <div className="space-y-3">
-              <h3 className="text-lg font-bold">📍 Altre cose da vedere</h3>
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold">📍 Altre cose da vedere</h3>
+                <button
+                  onClick={() => {
+                    setFormData({});
+                    setEditModal({ type: 'bilbaoPlace', dayIndex: 0 });
+                  }}
+                  className="text-xs bg-pink-500/20 text-pink-400 px-3 py-1 rounded-full hover:bg-pink-500/30"
+                >
+                  + Aggiungi
+                </button>
+              </div>
               <div className="grid gap-3">
                 {[
                   { name: 'Casco Viejo', desc: '7 strade storiche con bar, negozi e atmosfera autentica' },
                   { name: 'Mercado de la Ribera', desc: 'Mercato coperto più grande d\'Europa, ottimo per tapas' },
                   { name: 'Puente Zubizuri', desc: 'Ponte pedonale di Calatrava, iconico' },
+                  ...customBilbao.map(b => ({ name: b.name, desc: b.description, id: b.id }))
                 ].map((item, index) => {
-                  const itemId = `bilbao-${index}`;
+                  const isCustom = 'id' in item;
+                  const itemId = `bilbao-${isCustom ? (item as {id: string}).id : index}`;
                   const isFav = favorites.has(itemId);
                   const isVisited = visited.has(itemId);
                   
                   return (
-                    <div key={index} className={`bg-white/5 rounded-xl p-4 ${isVisited ? 'opacity-60' : ''}`}>
+                    <div key={isCustom ? (item as {id: string}).id : index} className={`bg-white/5 rounded-xl p-4 ${isVisited ? 'opacity-60' : ''} ${isCustom ? 'border-l-4 border-l-pink-500' : ''}`}>
                       <div className="flex justify-between items-start">
                         <div>
                           <div className="font-semibold flex items-center gap-2">
@@ -1210,6 +1340,14 @@ export default function Home() {
                           >
                             ✓
                           </button>
+                          {isCustom && (
+                            <button
+                              onClick={() => setCustomBilbao(customBilbao.filter(p => p.id !== (item as {id: string}).id))}
+                              className="p-1.5 rounded-lg text-red-400 hover:text-red-300 bg-white/10"
+                            >
+                              🗑️
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1754,6 +1892,190 @@ export default function Home() {
               }
             }}
             className="flex-1 py-2 bg-green-500 rounded-lg hover:bg-green-600 font-medium"
+          >
+            Aggiungi
+          </button>
+        </div>
+      </Modal>
+
+      {/* Add Pintxo Modal */}
+      <Modal
+        isOpen={editModal?.type === 'pintxo'}
+        onClose={() => setEditModal(null)}
+        title="🍢 Aggiungi Pintxos Bar"
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-400">Nome del bar *</label>
+            <input
+              type="text"
+              value={formData.name || ''}
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
+              placeholder="es. Bar Txepetxa"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Specialità *</label>
+            <input
+              type="text"
+              value={formData.specialty || ''}
+              onChange={e => setFormData({ ...formData, specialty: e.target.value })}
+              placeholder="es. Anchoas"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Zona</label>
+            <input
+              type="text"
+              value={formData.area || 'Parte Vieja'}
+              onChange={e => setFormData({ ...formData, area: e.target.value })}
+              placeholder="es. Parte Vieja"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={() => setEditModal(null)}
+            className="flex-1 py-2 bg-white/10 rounded-lg hover:bg-white/20"
+          >
+            Annulla
+          </button>
+          <button
+            onClick={() => {
+              if (formData.name && formData.specialty) {
+                setCustomPintxos([...customPintxos, {
+                  id: Date.now().toString(),
+                  name: formData.name,
+                  specialty: formData.specialty,
+                  area: formData.area || 'Parte Vieja'
+                }]);
+                setEditModal(null);
+                setFormData({});
+              }
+            }}
+            className="flex-1 py-2 bg-amber-500 rounded-lg hover:bg-amber-600 font-medium"
+          >
+            Aggiungi
+          </button>
+        </div>
+      </Modal>
+
+      {/* Add Must See Modal */}
+      <Modal
+        isOpen={editModal?.type === 'mustSee'}
+        onClose={() => setEditModal(null)}
+        title="📸 Aggiungi Luogo"
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-400">Nome *</label>
+            <input
+              type="text"
+              value={formData.name || ''}
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
+              placeholder="es. Monte Igueldo"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Descrizione</label>
+            <input
+              type="text"
+              value={formData.description || ''}
+              onChange={e => setFormData({ ...formData, description: e.target.value })}
+              placeholder="es. Vista panoramica"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Tempo consigliato</label>
+            <input
+              type="text"
+              value={formData.time || ''}
+              onChange={e => setFormData({ ...formData, time: e.target.value })}
+              placeholder="es. 2h"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={() => setEditModal(null)}
+            className="flex-1 py-2 bg-white/10 rounded-lg hover:bg-white/20"
+          >
+            Annulla
+          </button>
+          <button
+            onClick={() => {
+              if (formData.name) {
+                setCustomMustSee([...customMustSee, {
+                  id: Date.now().toString(),
+                  name: formData.name,
+                  description: formData.description || '',
+                  time: formData.time || ''
+                }]);
+                setEditModal(null);
+                setFormData({});
+              }
+            }}
+            className="flex-1 py-2 bg-purple-500 rounded-lg hover:bg-purple-600 font-medium"
+          >
+            Aggiungi
+          </button>
+        </div>
+      </Modal>
+
+      {/* Add Bilbao Place Modal */}
+      <Modal
+        isOpen={editModal?.type === 'bilbaoPlace'}
+        onClose={() => setEditModal(null)}
+        title="📍 Aggiungi Luogo Bilbao"
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-400">Nome *</label>
+            <input
+              type="text"
+              value={formData.name || ''}
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
+              placeholder="es. Museo de Bellas Artes"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Descrizione</label>
+            <input
+              type="text"
+              value={formData.description || ''}
+              onChange={e => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Descrizione breve..."
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={() => setEditModal(null)}
+            className="flex-1 py-2 bg-white/10 rounded-lg hover:bg-white/20"
+          >
+            Annulla
+          </button>
+          <button
+            onClick={() => {
+              if (formData.name) {
+                setCustomBilbao([...customBilbao, {
+                  id: Date.now().toString(),
+                  name: formData.name,
+                  description: formData.description || ''
+                }]);
+                setEditModal(null);
+                setFormData({});
+              }
+            }}
+            className="flex-1 py-2 bg-pink-500 rounded-lg hover:bg-pink-600 font-medium"
           >
             Aggiungi
           </button>
