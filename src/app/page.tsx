@@ -1,7 +1,71 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { tripData, sanSebastianGuide, torinoRestaurants, readingList, entertainment } from '@/data/trip';
+import { useState, useEffect, useCallback } from 'react';
+import { tripData as initialTripData, sanSebastianGuide, torinoRestaurants, readingList, entertainment, DayPlan, Booking, Activity } from '@/data/trip';
+
+// ============================================
+// STORAGE HOOK - Persistenza localStorage
+// ============================================
+function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((prev: T) => T)) => void] {
+  const [storedValue, setStoredValue] = useState<T>(initialValue);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    try {
+      const item = window.localStorage.getItem(key);
+      if (item) {
+        setStoredValue(JSON.parse(item));
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }, [key]);
+
+  const setValue = useCallback((value: T | ((prev: T) => T)) => {
+    try {
+      const valueToStore = value instanceof Function ? value(storedValue) : value;
+      setStoredValue(valueToStore);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(key, JSON.stringify(valueToStore));
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }, [key, storedValue]);
+
+  return [storedValue, setValue];
+}
+
+// ============================================
+// TYPES
+// ============================================
+interface DayNote {
+  dayIndex: number;
+  text: string;
+  createdAt: string;
+}
+
+interface ChecklistItem {
+  id: string;
+  text: string;
+  checked: boolean;
+  category: string;
+}
+
+interface CustomBooking extends Booking {
+  id: string;
+  isCustom?: boolean;
+}
+
+interface CustomActivity extends Activity {
+  id: string;
+  isCustom?: boolean;
+}
+
+// ============================================
+// COMPONENTS
+// ============================================
 
 // Countdown component
 function Countdown() {
@@ -102,6 +166,142 @@ function MapsLink({ address, className = '' }: { address: string; className?: st
   );
 }
 
+// Modal component
+function Modal({ isOpen, onClose, title, children }: { isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={onClose}>
+      <div 
+        className="bg-slate-800 rounded-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto border border-white/10"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold">{title}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">×</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Checklist Component
+function PackingChecklist({ items, setItems }: { items: ChecklistItem[]; setItems: (items: ChecklistItem[]) => void }) {
+  const [newItem, setNewItem] = useState('');
+  const [newCategory, setNewCategory] = useState('Essenziali');
+  
+  const categories = ['Essenziali', 'Vestiti', 'Tech', 'Documenti', 'Altro'];
+  
+  const addItem = () => {
+    if (!newItem.trim()) return;
+    setItems([...items, {
+      id: Date.now().toString(),
+      text: newItem.trim(),
+      checked: false,
+      category: newCategory
+    }]);
+    setNewItem('');
+  };
+  
+  const toggleItem = (id: string) => {
+    setItems(items.map(item => 
+      item.id === id ? { ...item, checked: !item.checked } : item
+    ));
+  };
+  
+  const deleteItem = (id: string) => {
+    setItems(items.filter(item => item.id !== id));
+  };
+  
+  const groupedItems = categories.reduce((acc, cat) => {
+    acc[cat] = items.filter(item => item.category === cat);
+    return acc;
+  }, {} as Record<string, ChecklistItem[]>);
+  
+  const totalChecked = items.filter(i => i.checked).length;
+  const total = items.length;
+  
+  return (
+    <div className="space-y-4">
+      {/* Progress */}
+      <div className="bg-white/5 rounded-xl p-4">
+        <div className="flex justify-between text-sm mb-2">
+          <span>Progresso</span>
+          <span className="text-green-400">{totalChecked}/{total}</span>
+        </div>
+        <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-green-500 transition-all duration-300"
+            style={{ width: total > 0 ? `${(totalChecked/total)*100}%` : '0%' }}
+          />
+        </div>
+      </div>
+      
+      {/* Add new item */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={newItem}
+          onChange={e => setNewItem(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && addItem()}
+          placeholder="Aggiungi oggetto..."
+          className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+        />
+        <select
+          value={newCategory}
+          onChange={e => setNewCategory(e.target.value)}
+          className="bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm focus:outline-none"
+        >
+          {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+        </select>
+        <button
+          onClick={addItem}
+          className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg text-sm font-medium"
+        >
+          +
+        </button>
+      </div>
+      
+      {/* Items by category */}
+      {categories.map(cat => {
+        const catItems = groupedItems[cat];
+        if (catItems.length === 0) return null;
+        
+        return (
+          <div key={cat} className="space-y-2">
+            <h4 className="text-sm font-semibold text-gray-400">{cat}</h4>
+            {catItems.map(item => (
+              <div 
+                key={item.id}
+                className={`flex items-center gap-3 bg-white/5 rounded-lg px-3 py-2 ${item.checked ? 'opacity-50' : ''}`}
+              >
+                <button
+                  onClick={() => toggleItem(item.id)}
+                  className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                    item.checked ? 'bg-green-500 border-green-500' : 'border-gray-500'
+                  }`}
+                >
+                  {item.checked && <span className="text-xs">✓</span>}
+                </button>
+                <span className={`flex-1 text-sm ${item.checked ? 'line-through text-gray-500' : ''}`}>
+                  {item.text}
+                </span>
+                <button
+                  onClick={() => deleteItem(item.id)}
+                  className="text-red-400 hover:text-red-300 text-sm"
+                >
+                  🗑️
+                </button>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // Hero images for destinations
 const heroImages: Record<string, string> = {
   'san-sebastian': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
@@ -112,10 +312,47 @@ const heroImages: Record<string, string> = {
   'dune-pilat': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80',
 };
 
-export default function Home() {
-  const [activeTab, setActiveTab] = useState<'itinerary' | 'san-sebastian' | 'bilbao' | 'bookings' | 'entertainment'>('itinerary');
-  const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([0]));
+// Default checklist items
+const defaultChecklist: ChecklistItem[] = [
+  { id: '1', text: 'Passaporto/Carta d\'identità', checked: false, category: 'Documenti' },
+  { id: '2', text: 'Biglietti treno (PDF)', checked: false, category: 'Documenti' },
+  { id: '3', text: 'Prenotazioni hotel', checked: false, category: 'Documenti' },
+  { id: '4', text: 'Patente (per noleggio auto)', checked: false, category: 'Documenti' },
+  { id: '5', text: 'Caricatore telefono', checked: false, category: 'Tech' },
+  { id: '6', text: 'Power bank', checked: false, category: 'Tech' },
+  { id: '7', text: 'Auricolari', checked: false, category: 'Tech' },
+  { id: '8', text: 'Adattatore presa (Francia)', checked: false, category: 'Tech' },
+  { id: '9', text: 'Giacca impermeabile', checked: false, category: 'Vestiti' },
+  { id: '10', text: 'Scarpe comode', checked: false, category: 'Vestiti' },
+  { id: '11', text: 'Medicinali personali', checked: false, category: 'Essenziali' },
+  { id: '12', text: 'Carta di credito', checked: false, category: 'Essenziali' },
+  { id: '13', text: 'Contanti (€)', checked: false, category: 'Essenziali' },
+];
 
+export default function Home() {
+  // ============================================
+  // STATE
+  // ============================================
+  const [activeTab, setActiveTab] = useState<'itinerary' | 'san-sebastian' | 'bilbao' | 'bookings' | 'entertainment' | 'checklist'>('itinerary');
+  const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([0]));
+  
+  // Persistent state (localStorage)
+  const [dayNotes, setDayNotes] = useLocalStorage<Record<number, string>>('trip-notes', {});
+  const [checklist, setChecklist] = useLocalStorage<ChecklistItem[]>('trip-checklist', defaultChecklist);
+  const [favorites, setFavorites] = useLocalStorage<Set<string>>('trip-favorites', new Set());
+  const [visited, setVisited] = useLocalStorage<Set<string>>('trip-visited', new Set());
+  const [customBookings, setCustomBookings] = useLocalStorage<Record<number, CustomBooking[]>>('trip-custom-bookings', {});
+  const [customActivities, setCustomActivities] = useLocalStorage<Record<number, CustomActivity[]>>('trip-custom-activities', {});
+  const [editedBookings, setEditedBookings] = useLocalStorage<Record<string, Partial<Booking>>>('trip-edited-bookings', {});
+  
+  // Modal state
+  const [editModal, setEditModal] = useState<{ type: 'note' | 'booking' | 'activity' | 'editBooking'; dayIndex: number; booking?: CustomBooking } | null>(null);
+  const [formData, setFormData] = useState<Record<string, string>>({});
+
+  // ============================================
+  // HANDLERS
+  // ============================================
+  
   const toggleDay = (index: number) => {
     const newExpanded = new Set(expandedDays);
     if (newExpanded.has(index)) {
@@ -124,6 +361,78 @@ export default function Home() {
       newExpanded.add(index);
     }
     setExpandedDays(newExpanded);
+  };
+
+  const toggleFavorite = (id: string) => {
+    const newFavorites = new Set(favorites);
+    if (newFavorites.has(id)) {
+      newFavorites.delete(id);
+    } else {
+      newFavorites.add(id);
+    }
+    setFavorites(newFavorites);
+  };
+
+  const toggleVisited = (id: string) => {
+    const newVisited = new Set(visited);
+    if (newVisited.has(id)) {
+      newVisited.delete(id);
+    } else {
+      newVisited.add(id);
+    }
+    setVisited(newVisited);
+  };
+
+  const saveNote = (dayIndex: number, text: string) => {
+    setDayNotes({ ...dayNotes, [dayIndex]: text });
+  };
+
+  const addCustomBooking = (dayIndex: number, booking: Omit<CustomBooking, 'id' | 'isCustom'>) => {
+    const newBooking: CustomBooking = {
+      ...booking,
+      id: Date.now().toString(),
+      isCustom: true
+    };
+    setCustomBookings({
+      ...customBookings,
+      [dayIndex]: [...(customBookings[dayIndex] || []), newBooking]
+    });
+  };
+
+  const deleteCustomBooking = (dayIndex: number, bookingId: string) => {
+    setCustomBookings({
+      ...customBookings,
+      [dayIndex]: (customBookings[dayIndex] || []).filter(b => b.id !== bookingId)
+    });
+  };
+
+  const updateBookingField = (bookingKey: string, field: string, value: string) => {
+    setEditedBookings({
+      ...editedBookings,
+      [bookingKey]: {
+        ...(editedBookings[bookingKey] || {}),
+        [field]: value
+      }
+    });
+  };
+
+  const addCustomActivity = (dayIndex: number, activity: Omit<CustomActivity, 'id' | 'isCustom'>) => {
+    const newActivity: CustomActivity = {
+      ...activity,
+      id: Date.now().toString(),
+      isCustom: true
+    };
+    setCustomActivities({
+      ...customActivities,
+      [dayIndex]: [...(customActivities[dayIndex] || []), newActivity]
+    });
+  };
+
+  const deleteCustomActivity = (dayIndex: number, activityId: string) => {
+    setCustomActivities({
+      ...customActivities,
+      [dayIndex]: (customActivities[dayIndex] || []).filter(a => a.id !== activityId)
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -142,6 +451,13 @@ export default function Home() {
       case 'todo': return '📝 Da fare';
       default: return status;
     }
+  };
+
+  // Merge original data with edits
+  const getMergedBooking = (booking: Booking, dayIndex: number, bookingIndex: number): Booking => {
+    const key = `${dayIndex}-${bookingIndex}`;
+    const edits = editedBookings[key] || {};
+    return { ...booking, ...edits };
   };
 
   return (
@@ -195,7 +511,7 @@ export default function Home() {
       </header>
 
       {/* Navigation Tabs */}
-      <nav className="sticky top-0 z-50 glass border-b border-white/10">
+      <nav className="sticky top-0 z-40 glass border-b border-white/10">
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex overflow-x-auto py-3 gap-2 scrollbar-hide">
             {[
@@ -204,6 +520,7 @@ export default function Home() {
               { id: 'bilbao', label: '🏛️ Bilbao', icon: '🏛️' },
               { id: 'bookings', label: '📋 Prenotazioni', icon: '📋' },
               { id: 'entertainment', label: '🎬 Entertainment', icon: '🎬' },
+              { id: 'checklist', label: '✅ Bagagli', icon: '✅' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -224,181 +541,330 @@ export default function Home() {
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 py-6">
         
+        {/* CHECKLIST TAB */}
+        {activeTab === 'checklist' && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold flex items-center gap-2">✅ Checklist Bagagli</h2>
+            <PackingChecklist items={checklist} setItems={setChecklist} />
+          </div>
+        )}
+        
         {/* ITINERARY TAB */}
         {activeTab === 'itinerary' && (
           <div className="space-y-4">
-            {tripData.map((day, index) => (
-              <div 
-                key={index} 
-                className="day-card overflow-hidden card-hover"
-              >
-                {/* Day Header - Clickable */}
+            {initialTripData.map((day, index) => {
+              const allBookings = [
+                ...day.bookings.map((b, i) => ({ ...getMergedBooking(b, index, i), id: `orig-${i}`, isCustom: false })),
+                ...(customBookings[index] || [])
+              ];
+              const allActivities = [
+                ...(day.freeTime?.suggestions || []).map((a, i) => ({ ...a, id: `orig-${i}`, isCustom: false })),
+                ...(customActivities[index] || [])
+              ];
+              
+              return (
                 <div 
-                  className="p-5 cursor-pointer"
-                  onClick={() => toggleDay(index)}
+                  key={index} 
+                  className="day-card overflow-hidden card-hover"
                 >
-                  <div className="flex items-start gap-4">
-                    <div className="text-4xl">{day.emoji}</div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs px-2 py-1 rounded-full bg-white/10 text-gray-300">
-                          {day.dayOfWeek}
-                        </span>
-                        <span className="text-xs text-gray-400">{day.date}</span>
+                  {/* Day Header - Clickable */}
+                  <div 
+                    className="p-5 cursor-pointer"
+                    onClick={() => toggleDay(index)}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="text-4xl">{day.emoji}</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs px-2 py-1 rounded-full bg-white/10 text-gray-300">
+                            {day.dayOfWeek}
+                          </span>
+                          <span className="text-xs text-gray-400">{day.date}</span>
+                        </div>
+                        <h3 className="text-xl font-bold">{day.title}</h3>
+                        <p className="text-gray-400 text-sm">{day.subtitle}</p>
+                        <p className="text-xs text-gray-500 mt-1">📍 {day.location}</p>
                       </div>
-                      <h3 className="text-xl font-bold">{day.title}</h3>
-                      <p className="text-gray-400 text-sm">{day.subtitle}</p>
-                      <p className="text-xs text-gray-500 mt-1">📍 {day.location}</p>
-                    </div>
-                    <div className={`transition-transform ${expandedDays.has(index) ? 'rotate-180' : ''}`}>
-                      ▼
+                      <div className={`transition-transform ${expandedDays.has(index) ? 'rotate-180' : ''}`}>
+                        ▼
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Day Details - Expandable */}
-                {expandedDays.has(index) && (
-                  <div className="px-5 pb-5 border-t border-white/10 pt-4 space-y-4">
-                    {/* Bookings */}
-                    {day.bookings.length > 0 && (
-                      <div className="space-y-3">
-                        <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Prenotazioni</h4>
-                        {day.bookings.map((booking, bIndex) => (
-                          <div key={bIndex} className={`rounded-xl p-4 space-y-2 ${booking.type === 'train' ? 'bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20' : 'bg-white/5'}`}>
-                            <div className="flex items-start justify-between">
-                              <div className="font-semibold">{booking.name}</div>
-                              <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(booking.status)}`}>
-                                {getStatusText(booking.status)}
-                              </span>
-                            </div>
-                            
-                            {/* Train: Carriage & Seat - BIG AND PROMINENT */}
-                            {booking.type === 'train' && (booking.carriage || booking.seat) && (
-                              <div className="flex gap-3 my-2">
-                                {booking.carriage && (
-                                  <div className="bg-red-500 text-white px-4 py-2 rounded-lg text-center">
-                                    <div className="text-xs opacity-80">Carrozza</div>
-                                    <div className="text-2xl font-bold">{booking.carriage}</div>
-                                  </div>
-                                )}
-                                {booking.seat && (
-                                  <div className="bg-orange-500 text-white px-4 py-2 rounded-lg text-center">
-                                    <div className="text-xs opacity-80">Posto</div>
-                                    <div className="text-2xl font-bold">{booking.seat}</div>
-                                  </div>
-                                )}
-                                {booking.class && (
-                                  <div className="bg-white/10 px-4 py-2 rounded-lg text-center flex items-center">
-                                    <div className="text-sm text-gray-300">{booking.class}</div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            
-                            {/* Train: Ticket PDF Button */}
-                            {booking.type === 'train' && booking.ticketPdf && (
-                              <a 
-                                href={booking.ticketPdf}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                              >
-                                🎫 Apri Biglietto
-                              </a>
-                            )}
-                            
-                            {booking.code && (
-                              <div className="flex items-center gap-2">
-                                <span className="text-gray-400 text-sm">Codice:</span>
-                                <CopyButton text={booking.code} />
-                              </div>
-                            )}
-                            {booking.time && <p className="text-sm text-gray-400">🕐 {booking.time}</p>}
-                            {booking.address && <MapsLink address={booking.address} className="text-sm" />}
-                            {booking.phone && (
-                              <a href={`tel:${booking.phone}`} className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1">
-                                📞 {booking.phone}
-                              </a>
-                            )}
-                            {booking.price && <p className="text-sm text-green-400">💰 {booking.price}</p>}
-                            {booking.notes && <p className="text-sm text-gray-500 italic">📝 {booking.notes}</p>}
-                            {booking.link && (
-                              <a 
-                                href={booking.link} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-sm text-blue-400 hover:text-blue-300 underline"
-                              >
-                                🔗 Apri link
-                              </a>
-                            )}
-                          </div>
-                        ))}
+                  {/* Day Details - Expandable */}
+                  {expandedDays.has(index) && (
+                    <div className="px-5 pb-5 border-t border-white/10 pt-4 space-y-4">
+                      
+                      {/* Personal Note */}
+                      <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="text-sm font-semibold text-purple-300">📝 Note personali</h4>
+                          <button
+                            onClick={() => {
+                              setFormData({ note: dayNotes[index] || '' });
+                              setEditModal({ type: 'note', dayIndex: index });
+                            }}
+                            className="text-xs text-purple-400 hover:text-purple-300"
+                          >
+                            ✏️ Modifica
+                          </button>
+                        </div>
+                        {dayNotes[index] ? (
+                          <p className="text-sm text-gray-300 whitespace-pre-wrap">{dayNotes[index]}</p>
+                        ) : (
+                          <p className="text-sm text-gray-500 italic">Nessuna nota. Tocca per aggiungerne una.</p>
+                        )}
                       </div>
-                    )}
-
-                    {/* Road Trip Stops */}
-                    {day.roadTrip && (
-                      <div className="space-y-3">
-                        <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">
-                          🛣️ Road Trip: {day.roadTrip.from} → {day.roadTrip.to}
-                        </h4>
-                        <p className="text-xs text-gray-400">Durata: {day.roadTrip.duration}</p>
+                      
+                      {/* Bookings */}
+                      {allBookings.length > 0 && (
                         <div className="space-y-3">
-                          {day.roadTrip.stops.map((stop, sIndex) => (
-                            <div key={sIndex} className="bg-gradient-to-r from-amber-500/10 to-transparent rounded-xl p-4 border-l-2 border-amber-500">
+                          <div className="flex justify-between items-center">
+                            <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Prenotazioni</h4>
+                            <button
+                              onClick={() => {
+                                setFormData({});
+                                setEditModal({ type: 'booking', dayIndex: index });
+                              }}
+                              className="text-xs bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full hover:bg-blue-500/30"
+                            >
+                              + Aggiungi
+                            </button>
+                          </div>
+                          {allBookings.map((booking, bIndex) => (
+                            <div key={booking.id} className={`rounded-xl p-4 space-y-2 ${booking.type === 'train' ? 'bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20' : 'bg-white/5'} ${booking.isCustom ? 'border-l-4 border-l-blue-500' : ''}`}>
                               <div className="flex items-start justify-between">
-                                <div>
-                                  <h5 className="font-semibold text-amber-300">{stop.name}</h5>
-                                  <p className="text-sm text-gray-400 mt-1">{stop.description}</p>
-                                  <p className="text-xs text-gray-500 mt-1">⏱️ {stop.stayTime}</p>
+                                <div className="font-semibold">{booking.name}</div>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(booking.status)}`}>
+                                    {getStatusText(booking.status)}
+                                  </span>
+                                  {booking.isCustom && (
+                                    <button
+                                      onClick={() => deleteCustomBooking(index, booking.id)}
+                                      className="text-red-400 hover:text-red-300 text-sm"
+                                    >
+                                      🗑️
+                                    </button>
+                                  )}
+                                  {!booking.isCustom && (
+                                    <button
+                                      onClick={() => {
+                                        const origIndex = parseInt(booking.id.replace('orig-', ''));
+                                        const key = `${index}-${origIndex}`;
+                                        setFormData({
+                                          time: editedBookings[key]?.time || day.bookings[origIndex].time || '',
+                                          notes: editedBookings[key]?.notes || day.bookings[origIndex].notes || '',
+                                        });
+                                        setEditModal({ type: 'editBooking', dayIndex: index, booking: { ...booking, id: key } as CustomBooking });
+                                      }}
+                                      className="text-gray-400 hover:text-white text-sm"
+                                    >
+                                      ✏️
+                                    </button>
+                                  )}
                                 </div>
                               </div>
-                              <div className="flex flex-wrap gap-1 mt-2">
-                                {stop.highlights.map((h, hIndex) => (
-                                  <span key={hIndex} className="text-xs px-2 py-1 bg-white/10 rounded-full">
-                                    {h}
-                                  </span>
-                                ))}
-                              </div>
-                              {stop.mapLink && (
+                              
+                              {/* Train: Carriage & Seat - BIG AND PROMINENT */}
+                              {booking.type === 'train' && (booking.carriage || booking.seat) && (
+                                <div className="flex gap-3 my-2">
+                                  {booking.carriage && (
+                                    <div className="bg-red-500 text-white px-4 py-2 rounded-lg text-center">
+                                      <div className="text-xs opacity-80">Carrozza</div>
+                                      <div className="text-2xl font-bold">{booking.carriage}</div>
+                                    </div>
+                                  )}
+                                  {booking.seat && (
+                                    <div className="bg-orange-500 text-white px-4 py-2 rounded-lg text-center">
+                                      <div className="text-xs opacity-80">Posto</div>
+                                      <div className="text-2xl font-bold">{booking.seat}</div>
+                                    </div>
+                                  )}
+                                  {booking.class && (
+                                    <div className="bg-white/10 px-4 py-2 rounded-lg text-center flex items-center">
+                                      <div className="text-sm text-gray-300">{booking.class}</div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              
+                              {/* Train: Ticket PDF Button */}
+                              {booking.type === 'train' && booking.ticketPdf && (
                                 <a 
-                                  href={stop.mapLink}
+                                  href={booking.ticketPdf}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 mt-2 text-sm text-blue-400 hover:text-blue-300"
+                                  className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                                 >
-                                  🗺️ Apri in Maps
+                                  🎫 Apri Biglietto
+                                </a>
+                              )}
+                              
+                              {booking.code && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-400 text-sm">Codice:</span>
+                                  <CopyButton text={booking.code} />
+                                </div>
+                              )}
+                              {booking.time && <p className="text-sm text-gray-400">🕐 {booking.time}</p>}
+                              {booking.address && <MapsLink address={booking.address} className="text-sm" />}
+                              {booking.phone && (
+                                <a href={`tel:${booking.phone}`} className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                                  📞 {booking.phone}
+                                </a>
+                              )}
+                              {booking.price && <p className="text-sm text-green-400">💰 {booking.price}</p>}
+                              {booking.notes && <p className="text-sm text-gray-500 italic">📝 {booking.notes}</p>}
+                              {booking.link && (
+                                <a 
+                                  href={booking.link} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-blue-400 hover:text-blue-300 underline"
+                                >
+                                  🔗 Apri link
                                 </a>
                               )}
                             </div>
                           ))}
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {/* Free Time */}
-                    {day.freeTime?.available && day.freeTime.suggestions.length > 0 && (
-                      <div className="space-y-3">
-                        <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">
-                          ⭐ Tempo libero {day.freeTime.hours && `(${day.freeTime.hours})`}
-                        </h4>
-                        <div className="space-y-2">
-                          {day.freeTime.suggestions.map((activity, aIndex) => (
-                            <div key={aIndex} className="bg-white/5 rounded-xl p-3">
-                              <div className="font-medium">{activity.name}</div>
-                              <p className="text-sm text-gray-400">{activity.description}</p>
-                              {activity.duration && <p className="text-xs text-gray-500">⏱️ {activity.duration}</p>}
-                              {activity.tips && <p className="text-xs text-amber-400 mt-1">💡 {activity.tips}</p>}
-                            </div>
-                          ))}
+                      {/* Road Trip Stops */}
+                      {day.roadTrip && (
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">
+                            🛣️ Road Trip: {day.roadTrip.from} → {day.roadTrip.to}
+                          </h4>
+                          <p className="text-xs text-gray-400">Durata: {day.roadTrip.duration}</p>
+                          <div className="space-y-3">
+                            {day.roadTrip.stops.map((stop, sIndex) => {
+                              const stopId = `stop-${index}-${sIndex}`;
+                              const isFav = favorites.has(stopId);
+                              const isVisited = visited.has(stopId);
+                              
+                              return (
+                                <div key={sIndex} className={`bg-gradient-to-r from-amber-500/10 to-transparent rounded-xl p-4 border-l-2 ${isVisited ? 'border-green-500 opacity-60' : 'border-amber-500'}`}>
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <h5 className="font-semibold text-amber-300 flex items-center gap-2">
+                                        {stop.name}
+                                        {isFav && <span>⭐</span>}
+                                        {isVisited && <span>✅</span>}
+                                      </h5>
+                                      <p className="text-sm text-gray-400 mt-1">{stop.description}</p>
+                                      <p className="text-xs text-gray-500 mt-1">⏱️ {stop.stayTime}</p>
+                                    </div>
+                                    <div className="flex gap-1">
+                                      <button
+                                        onClick={() => toggleFavorite(stopId)}
+                                        className={`p-2 rounded-lg ${isFav ? 'bg-amber-500/30 text-amber-400' : 'bg-white/10 text-gray-400'}`}
+                                      >
+                                        ⭐
+                                      </button>
+                                      <button
+                                        onClick={() => toggleVisited(stopId)}
+                                        className={`p-2 rounded-lg ${isVisited ? 'bg-green-500/30 text-green-400' : 'bg-white/10 text-gray-400'}`}
+                                      >
+                                        ✓
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-wrap gap-1 mt-2">
+                                    {stop.highlights.map((h, hIndex) => (
+                                      <span key={hIndex} className="text-xs px-2 py-1 bg-white/10 rounded-full">
+                                        {h}
+                                      </span>
+                                    ))}
+                                  </div>
+                                  {stop.mapLink && (
+                                    <a 
+                                      href={stop.mapLink}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 mt-2 text-sm text-blue-400 hover:text-blue-300"
+                                    >
+                                      🗺️ Apri in Maps
+                                    </a>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
+                      )}
+
+                      {/* Free Time & Activities */}
+                      {(allActivities.length > 0 || day.freeTime?.available) && (
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">
+                              ⭐ Tempo libero {day.freeTime?.hours && `(${day.freeTime.hours})`}
+                            </h4>
+                            <button
+                              onClick={() => {
+                                setFormData({});
+                                setEditModal({ type: 'activity', dayIndex: index });
+                              }}
+                              className="text-xs bg-green-500/20 text-green-400 px-3 py-1 rounded-full hover:bg-green-500/30"
+                            >
+                              + Aggiungi
+                            </button>
+                          </div>
+                          <div className="space-y-2">
+                            {allActivities.map((activity, aIndex) => {
+                              const actId = `act-${index}-${activity.id}`;
+                              const isFav = favorites.has(actId);
+                              const isVisited = visited.has(actId);
+                              
+                              return (
+                                <div key={activity.id} className={`bg-white/5 rounded-xl p-3 ${activity.isCustom ? 'border-l-4 border-l-green-500' : ''} ${isVisited ? 'opacity-60' : ''}`}>
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                      <div className="font-medium flex items-center gap-2">
+                                        {activity.name}
+                                        {isFav && <span>⭐</span>}
+                                        {isVisited && <span>✅</span>}
+                                      </div>
+                                      <p className="text-sm text-gray-400">{activity.description}</p>
+                                      {activity.duration && <p className="text-xs text-gray-500">⏱️ {activity.duration}</p>}
+                                      {activity.tips && <p className="text-xs text-amber-400 mt-1">💡 {activity.tips}</p>}
+                                    </div>
+                                    <div className="flex gap-1">
+                                      <button
+                                        onClick={() => toggleFavorite(actId)}
+                                        className={`p-1.5 rounded-lg text-sm ${isFav ? 'bg-amber-500/30 text-amber-400' : 'bg-white/10 text-gray-400'}`}
+                                      >
+                                        ⭐
+                                      </button>
+                                      <button
+                                        onClick={() => toggleVisited(actId)}
+                                        className={`p-1.5 rounded-lg text-sm ${isVisited ? 'bg-green-500/30 text-green-400' : 'bg-white/10 text-gray-400'}`}
+                                      >
+                                        ✓
+                                      </button>
+                                      {activity.isCustom && (
+                                        <button
+                                          onClick={() => deleteCustomActivity(index, activity.id)}
+                                          className="p-1.5 rounded-lg text-sm text-red-400 hover:text-red-300 bg-white/10"
+                                        >
+                                          🗑️
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -423,23 +889,47 @@ export default function Home() {
               <h3 className="text-lg font-bold flex items-center gap-2">🍢 Pintxos Bars</h3>
               <p className="text-sm text-gray-400">Il giro dei pintxos nella Parte Vieja è un must!</p>
               <div className="grid gap-3">
-                {sanSebastianGuide.pintxosBars.map((bar, index) => (
-                  <div key={index} className="bg-white/5 rounded-xl p-4 flex justify-between items-start">
-                    <div>
-                      <div className="font-semibold">{bar.name}</div>
-                      <div className="text-sm text-amber-400">★ {bar.specialty}</div>
-                      <div className="text-xs text-gray-500">{bar.area}</div>
+                {sanSebastianGuide.pintxosBars.map((bar, index) => {
+                  const barId = `bar-${index}`;
+                  const isFav = favorites.has(barId);
+                  const isVisited = visited.has(barId);
+                  
+                  return (
+                    <div key={index} className={`bg-white/5 rounded-xl p-4 flex justify-between items-start ${isVisited ? 'opacity-60' : ''}`}>
+                      <div>
+                        <div className="font-semibold flex items-center gap-2">
+                          {bar.name}
+                          {isFav && <span>⭐</span>}
+                          {isVisited && <span>✅</span>}
+                        </div>
+                        <div className="text-sm text-amber-400">★ {bar.specialty}</div>
+                        <div className="text-xs text-gray-500">{bar.area}</div>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => toggleFavorite(barId)}
+                          className={`p-2 rounded-lg ${isFav ? 'bg-amber-500/30 text-amber-400' : 'bg-white/10 text-gray-400'}`}
+                        >
+                          ⭐
+                        </button>
+                        <button
+                          onClick={() => toggleVisited(barId)}
+                          className={`p-2 rounded-lg ${isVisited ? 'bg-green-500/30 text-green-400' : 'bg-white/10 text-gray-400'}`}
+                        >
+                          ✓
+                        </button>
+                        <a 
+                          href={`https://maps.google.com/?q=${encodeURIComponent(bar.name + ' San Sebastián')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 p-2"
+                        >
+                          🗺️
+                        </a>
+                      </div>
                     </div>
-                    <a 
-                      href={`https://maps.google.com/?q=${encodeURIComponent(bar.name + ' San Sebastián')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-400 hover:text-blue-300 p-2"
-                    >
-                      🗺️
-                    </a>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -447,17 +937,41 @@ export default function Home() {
             <div className="space-y-3">
               <h3 className="text-lg font-bold flex items-center gap-2">📸 Da non perdere</h3>
               <div className="grid gap-3">
-                {sanSebastianGuide.mustSee.map((place, index) => (
-                  <div key={index} className="bg-white/5 rounded-xl p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="font-semibold">{place.name}</div>
-                        <div className="text-sm text-gray-400">{place.description}</div>
+                {sanSebastianGuide.mustSee.map((place, index) => {
+                  const placeId = `must-${index}`;
+                  const isFav = favorites.has(placeId);
+                  const isVisited = visited.has(placeId);
+                  
+                  return (
+                    <div key={index} className={`bg-white/5 rounded-xl p-4 ${isVisited ? 'opacity-60' : ''}`}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-semibold flex items-center gap-2">
+                            {place.name}
+                            {isFav && <span>⭐</span>}
+                            {isVisited && <span>✅</span>}
+                          </div>
+                          <div className="text-sm text-gray-400">{place.description}</div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs px-2 py-1 bg-white/10 rounded-full">{place.time}</span>
+                          <button
+                            onClick={() => toggleFavorite(placeId)}
+                            className={`p-1.5 rounded-lg ${isFav ? 'bg-amber-500/30 text-amber-400' : 'bg-white/10 text-gray-400'}`}
+                          >
+                            ⭐
+                          </button>
+                          <button
+                            onClick={() => toggleVisited(placeId)}
+                            className={`p-1.5 rounded-lg ${isVisited ? 'bg-green-500/30 text-green-400' : 'bg-white/10 text-gray-400'}`}
+                          >
+                            ✓
+                          </button>
+                        </div>
                       </div>
-                      <span className="text-xs px-2 py-1 bg-white/10 rounded-full">{place.time}</span>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -521,18 +1035,44 @@ export default function Home() {
             <div className="space-y-3">
               <h3 className="text-lg font-bold">📍 Altre cose da vedere</h3>
               <div className="grid gap-3">
-                <div className="bg-white/5 rounded-xl p-4">
-                  <div className="font-semibold">Casco Viejo</div>
-                  <p className="text-sm text-gray-400">7 strade storiche con bar, negozi e atmosfera autentica</p>
-                </div>
-                <div className="bg-white/5 rounded-xl p-4">
-                  <div className="font-semibold">Mercado de la Ribera</div>
-                  <p className="text-sm text-gray-400">Mercato coperto più grande d'Europa, ottimo per tapas</p>
-                </div>
-                <div className="bg-white/5 rounded-xl p-4">
-                  <div className="font-semibold">Puente Zubizuri</div>
-                  <p className="text-sm text-gray-400">Ponte pedonale di Calatrava, iconico</p>
-                </div>
+                {[
+                  { name: 'Casco Viejo', desc: '7 strade storiche con bar, negozi e atmosfera autentica' },
+                  { name: 'Mercado de la Ribera', desc: 'Mercato coperto più grande d\'Europa, ottimo per tapas' },
+                  { name: 'Puente Zubizuri', desc: 'Ponte pedonale di Calatrava, iconico' },
+                ].map((item, index) => {
+                  const itemId = `bilbao-${index}`;
+                  const isFav = favorites.has(itemId);
+                  const isVisited = visited.has(itemId);
+                  
+                  return (
+                    <div key={index} className={`bg-white/5 rounded-xl p-4 ${isVisited ? 'opacity-60' : ''}`}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-semibold flex items-center gap-2">
+                            {item.name}
+                            {isFav && <span>⭐</span>}
+                            {isVisited && <span>✅</span>}
+                          </div>
+                          <p className="text-sm text-gray-400">{item.desc}</p>
+                        </div>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => toggleFavorite(itemId)}
+                            className={`p-1.5 rounded-lg ${isFav ? 'bg-amber-500/30 text-amber-400' : 'bg-white/10 text-gray-400'}`}
+                          >
+                            ⭐
+                          </button>
+                          <button
+                            onClick={() => toggleVisited(itemId)}
+                            className={`p-1.5 rounded-lg ${isVisited ? 'bg-green-500/30 text-green-400' : 'bg-white/10 text-gray-400'}`}
+                          >
+                            ✓
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -545,8 +1085,12 @@ export default function Home() {
             
             {/* Group by type */}
             {['train', 'hotel', 'car', 'restaurant'].map(type => {
-              const allBookings = tripData.flatMap(day => 
-                day.bookings.filter(b => b.type === type).map(b => ({ ...b, day: day.date }))
+              const allBookings = initialTripData.flatMap((day, dayIndex) => 
+                day.bookings.filter(b => b.type === type).map((b, i) => ({ 
+                  ...getMergedBooking(b, dayIndex, day.bookings.findIndex(x => x === b)), 
+                  day: day.date,
+                  dayIndex 
+                }))
               );
               if (allBookings.length === 0) return null;
               
@@ -596,6 +1140,43 @@ export default function Home() {
               );
             })}
 
+            {/* Custom bookings */}
+            {Object.values(customBookings).flat().length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  ✨ Aggiunti da te
+                </h3>
+                <div className="space-y-3">
+                  {Object.entries(customBookings).flatMap(([dayIndex, bookings]) =>
+                    bookings.map((booking) => (
+                      <div key={booking.id} className="bg-white/5 rounded-xl p-4 space-y-2 border-l-4 border-l-blue-500">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="font-semibold">{booking.name}</div>
+                            <div className="text-xs text-gray-500">{initialTripData[parseInt(dayIndex)]?.date}</div>
+                          </div>
+                          <div className="flex gap-2">
+                            <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(booking.status)}`}>
+                              {getStatusText(booking.status)}
+                            </span>
+                            <button
+                              onClick={() => deleteCustomBooking(parseInt(dayIndex), booking.id)}
+                              className="text-red-400 hover:text-red-300"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                        {booking.time && <p className="text-sm text-gray-400">🕐 {booking.time}</p>}
+                        {booking.address && <MapsLink address={booking.address} className="text-sm" />}
+                        {booking.notes && <p className="text-sm text-gray-500 italic">📝 {booking.notes}</p>}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Torino Restaurants */}
             <div className="space-y-3">
               <h3 className="text-lg font-semibold flex items-center gap-2">⭐ Ristoranti Stellati Torino</h3>
@@ -629,21 +1210,35 @@ export default function Home() {
             <div className="space-y-3">
               <h3 className="text-lg font-semibold">🎬 Film</h3>
               <div className="space-y-3">
-                {entertainment.films.map((film, index) => (
-                  <div key={index} className="bg-white/5 rounded-xl p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="font-semibold">{film.title} <span className="text-gray-500">({film.year})</span></div>
-                        <div className="text-sm text-gray-400">{film.genre} • {film.duration}</div>
-                        <p className="text-sm text-gray-300 mt-1">{film.description}</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-amber-400 font-bold">⭐ {film.rating}</div>
-                        <div className="text-xs text-gray-500">{film.streaming}</div>
+                {entertainment.films.map((film, index) => {
+                  const filmId = `film-${index}`;
+                  const isWatched = visited.has(filmId);
+                  
+                  return (
+                    <div key={index} className={`bg-white/5 rounded-xl p-4 ${isWatched ? 'opacity-60' : ''}`}>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="font-semibold flex items-center gap-2">
+                            {film.title} <span className="text-gray-500">({film.year})</span>
+                            {isWatched && <span>✅</span>}
+                          </div>
+                          <div className="text-sm text-gray-400">{film.genre} • {film.duration}</div>
+                          <p className="text-sm text-gray-300 mt-1">{film.description}</p>
+                        </div>
+                        <div className="text-right flex flex-col items-end gap-1">
+                          <div className="text-amber-400 font-bold">⭐ {film.rating}</div>
+                          <div className="text-xs text-gray-500">{film.streaming}</div>
+                          <button
+                            onClick={() => toggleVisited(filmId)}
+                            className={`p-1 rounded text-xs ${isWatched ? 'bg-green-500/30 text-green-400' : 'bg-white/10 text-gray-400'}`}
+                          >
+                            {isWatched ? 'Visto' : 'Segna visto'}
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -675,41 +1270,353 @@ export default function Home() {
             {/* Reading */}
             <div className="space-y-3">
               <h3 className="text-lg font-semibold">📖 Letture</h3>
-              {readingList.map((item, index) => (
-                <div key={index} className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl p-4">
-                  <div className="font-semibold">{item.title}</div>
-                  <div className="text-sm text-gray-400">di {item.author}</div>
-                  <p className="text-sm text-gray-300 mt-2">{item.description}</p>
-                  <div className="flex items-center gap-3 mt-2">
-                    <span className="text-xs text-gray-500">⏱️ {item.readTime}</span>
-                    <a 
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-blue-400 hover:text-blue-300 underline"
-                    >
-                      Leggi →
-                    </a>
+              {readingList.map((item, index) => {
+                const readId = `read-${index}`;
+                const isRead = visited.has(readId);
+                
+                return (
+                  <div key={index} className={`bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl p-4 ${isRead ? 'opacity-60' : ''}`}>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="font-semibold flex items-center gap-2">
+                          {item.title}
+                          {isRead && <span>✅</span>}
+                        </div>
+                        <div className="text-sm text-gray-400">di {item.author}</div>
+                        <p className="text-sm text-gray-300 mt-2">{item.description}</p>
+                      </div>
+                      <button
+                        onClick={() => toggleVisited(readId)}
+                        className={`p-1 rounded text-xs ${isRead ? 'bg-green-500/30 text-green-400' : 'bg-white/10 text-gray-400'}`}
+                      >
+                        {isRead ? 'Letto' : 'Segna letto'}
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-3 mt-2">
+                      <span className="text-xs text-gray-500">⏱️ {item.readTime}</span>
+                      <a 
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-400 hover:text-blue-300 underline"
+                      >
+                        Leggi →
+                      </a>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Podcasts */}
             <div className="space-y-3">
               <h3 className="text-lg font-semibold">🎧 Podcast</h3>
-              {entertainment.podcasts.map((pod, index) => (
-                <div key={index} className="bg-white/5 rounded-xl p-4">
-                  <div className="font-semibold">{pod.title}</div>
-                  <div className="text-sm text-amber-400">{pod.episode}</div>
-                  <div className="text-sm text-gray-400">{pod.duration} • {pod.platform}</div>
-                  <p className="text-sm text-gray-300 mt-1">{pod.description}</p>
-                </div>
-              ))}
+              {entertainment.podcasts.map((pod, index) => {
+                const podId = `pod-${index}`;
+                const isListened = visited.has(podId);
+                
+                return (
+                  <div key={index} className={`bg-white/5 rounded-xl p-4 ${isListened ? 'opacity-60' : ''}`}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-semibold flex items-center gap-2">
+                          {pod.title}
+                          {isListened && <span>✅</span>}
+                        </div>
+                        <div className="text-sm text-amber-400">{pod.episode}</div>
+                        <div className="text-sm text-gray-400">{pod.duration} • {pod.platform}</div>
+                        <p className="text-sm text-gray-300 mt-1">{pod.description}</p>
+                      </div>
+                      <button
+                        onClick={() => toggleVisited(podId)}
+                        className={`p-1 rounded text-xs ${isListened ? 'bg-green-500/30 text-green-400' : 'bg-white/10 text-gray-400'}`}
+                      >
+                        {isListened ? 'Ascoltato' : 'Segna'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
       </div>
+
+      {/* MODALS */}
+      
+      {/* Note Modal */}
+      <Modal
+        isOpen={editModal?.type === 'note'}
+        onClose={() => setEditModal(null)}
+        title="📝 Note personali"
+      >
+        <textarea
+          value={formData.note || ''}
+          onChange={e => setFormData({ ...formData, note: e.target.value })}
+          placeholder="Scrivi le tue note per questo giorno..."
+          className="w-full h-40 bg-white/10 border border-white/20 rounded-xl p-3 text-sm focus:outline-none focus:border-blue-500 resize-none"
+        />
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={() => setEditModal(null)}
+            className="flex-1 py-2 bg-white/10 rounded-lg hover:bg-white/20"
+          >
+            Annulla
+          </button>
+          <button
+            onClick={() => {
+              if (editModal) {
+                saveNote(editModal.dayIndex, formData.note || '');
+                setEditModal(null);
+              }
+            }}
+            className="flex-1 py-2 bg-blue-500 rounded-lg hover:bg-blue-600 font-medium"
+          >
+            Salva
+          </button>
+        </div>
+      </Modal>
+
+      {/* Add Booking Modal */}
+      <Modal
+        isOpen={editModal?.type === 'booking'}
+        onClose={() => setEditModal(null)}
+        title="➕ Aggiungi Prenotazione"
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-400">Tipo</label>
+            <select
+              value={formData.type || 'restaurant'}
+              onChange={e => setFormData({ ...formData, type: e.target.value })}
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            >
+              <option value="train">🚄 Treno</option>
+              <option value="hotel">🏨 Hotel</option>
+              <option value="car">🚗 Auto</option>
+              <option value="restaurant">🍽️ Ristorante</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Nome *</label>
+            <input
+              type="text"
+              value={formData.name || ''}
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
+              placeholder="es. Ristorante La Concha"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Orario</label>
+            <input
+              type="text"
+              value={formData.time || ''}
+              onChange={e => setFormData({ ...formData, time: e.target.value })}
+              placeholder="es. 20:00"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Indirizzo</label>
+            <input
+              type="text"
+              value={formData.address || ''}
+              onChange={e => setFormData({ ...formData, address: e.target.value })}
+              placeholder="es. Calle Mayor 12"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Codice prenotazione</label>
+            <input
+              type="text"
+              value={formData.code || ''}
+              onChange={e => setFormData({ ...formData, code: e.target.value })}
+              placeholder="es. ABC123"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Note</label>
+            <textarea
+              value={formData.notes || ''}
+              onChange={e => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Note aggiuntive..."
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1 h-20 resize-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Stato</label>
+            <select
+              value={formData.status || 'pending'}
+              onChange={e => setFormData({ ...formData, status: e.target.value })}
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            >
+              <option value="confirmed">✓ Confermato</option>
+              <option value="pending">⏳ Da confermare</option>
+              <option value="todo">📝 Da fare</option>
+            </select>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={() => setEditModal(null)}
+            className="flex-1 py-2 bg-white/10 rounded-lg hover:bg-white/20"
+          >
+            Annulla
+          </button>
+          <button
+            onClick={() => {
+              if (editModal && formData.name) {
+                addCustomBooking(editModal.dayIndex, {
+                  type: (formData.type || 'restaurant') as Booking['type'],
+                  name: formData.name,
+                  time: formData.time,
+                  address: formData.address,
+                  code: formData.code,
+                  notes: formData.notes,
+                  status: (formData.status || 'pending') as Booking['status'],
+                });
+                setEditModal(null);
+                setFormData({});
+              }
+            }}
+            className="flex-1 py-2 bg-blue-500 rounded-lg hover:bg-blue-600 font-medium"
+          >
+            Aggiungi
+          </button>
+        </div>
+      </Modal>
+
+      {/* Edit Existing Booking Modal */}
+      <Modal
+        isOpen={editModal?.type === 'editBooking'}
+        onClose={() => setEditModal(null)}
+        title="✏️ Modifica Prenotazione"
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-400">Orario</label>
+            <input
+              type="text"
+              value={formData.time || ''}
+              onChange={e => setFormData({ ...formData, time: e.target.value })}
+              placeholder="es. 20:00 → 21:30"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Note aggiuntive</label>
+            <textarea
+              value={formData.notes || ''}
+              onChange={e => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Note personali..."
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1 h-20 resize-none"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={() => setEditModal(null)}
+            className="flex-1 py-2 bg-white/10 rounded-lg hover:bg-white/20"
+          >
+            Annulla
+          </button>
+          <button
+            onClick={() => {
+              if (editModal?.booking?.id) {
+                if (formData.time) {
+                  updateBookingField(editModal.booking.id, 'time', formData.time);
+                }
+                if (formData.notes) {
+                  updateBookingField(editModal.booking.id, 'notes', formData.notes);
+                }
+                setEditModal(null);
+                setFormData({});
+              }
+            }}
+            className="flex-1 py-2 bg-blue-500 rounded-lg hover:bg-blue-600 font-medium"
+          >
+            Salva
+          </button>
+        </div>
+      </Modal>
+
+      {/* Add Activity Modal */}
+      <Modal
+        isOpen={editModal?.type === 'activity'}
+        onClose={() => setEditModal(null)}
+        title="➕ Aggiungi Attività"
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-400">Nome *</label>
+            <input
+              type="text"
+              value={formData.name || ''}
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
+              placeholder="es. Visita al museo"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Descrizione</label>
+            <textarea
+              value={formData.description || ''}
+              onChange={e => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Descrivi l'attività..."
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1 h-20 resize-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Durata</label>
+            <input
+              type="text"
+              value={formData.duration || ''}
+              onChange={e => setFormData({ ...formData, duration: e.target.value })}
+              placeholder="es. 2 ore"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Tips</label>
+            <input
+              type="text"
+              value={formData.tips || ''}
+              onChange={e => setFormData({ ...formData, tips: e.target.value })}
+              placeholder="Consigli utili..."
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={() => setEditModal(null)}
+            className="flex-1 py-2 bg-white/10 rounded-lg hover:bg-white/20"
+          >
+            Annulla
+          </button>
+          <button
+            onClick={() => {
+              if (editModal && formData.name) {
+                addCustomActivity(editModal.dayIndex, {
+                  name: formData.name,
+                  description: formData.description || '',
+                  duration: formData.duration,
+                  tips: formData.tips,
+                  type: 'leisure',
+                });
+                setEditModal(null);
+                setFormData({});
+              }
+            }}
+            className="flex-1 py-2 bg-green-500 rounded-lg hover:bg-green-600 font-medium"
+          >
+            Aggiungi
+          </button>
+        </div>
+      </Modal>
 
       {/* Footer */}
       <footer className="text-center py-8 text-gray-500 text-sm">
