@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { tripData as initialTripData, sanSebastianGuide, torinoRestaurants, readingList, entertainment, DayPlan, Booking, Activity } from '@/data/trip';
+import { switchInfo, switchAgenda, yourPresentations } from '@/data/switch';
 
 // ============================================
 // STORAGE HOOK - Persistenza localStorage
@@ -333,7 +334,7 @@ export default function Home() {
   // ============================================
   // STATE
   // ============================================
-  const [activeTab, setActiveTab] = useState<'itinerary' | 'san-sebastian' | 'bilbao' | 'bookings' | 'entertainment' | 'checklist'>('itinerary');
+  const [activeTab, setActiveTab] = useState<'itinerary' | 'switch' | 'san-sebastian' | 'bilbao' | 'bookings' | 'entertainment' | 'checklist'>('itinerary');
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([0]));
   
   // Persistent state (localStorage)
@@ -516,6 +517,7 @@ export default function Home() {
           <div className="flex overflow-x-auto py-3 gap-2 scrollbar-hide">
             {[
               { id: 'itinerary', label: '📅 Itinerario', icon: '📅' },
+              { id: 'switch', label: '💼 SWITCH', icon: '💼' },
               { id: 'san-sebastian', label: '🍷 San Sebastián', icon: '🍷' },
               { id: 'bilbao', label: '🏛️ Bilbao', icon: '🏛️' },
               { id: 'bookings', label: '📋 Prenotazioni', icon: '📋' },
@@ -546,6 +548,146 @@ export default function Home() {
           <div className="space-y-6">
             <h2 className="text-xl font-bold flex items-center gap-2">✅ Checklist Bagagli</h2>
             <PackingChecklist items={checklist} setItems={setChecklist} />
+          </div>
+        )}
+
+        {/* SWITCH TAB */}
+        {activeTab === 'switch' && (
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 rounded-2xl p-5">
+              <div className="flex items-start gap-4">
+                <div className="text-4xl">🇪🇺</div>
+                <div>
+                  <h2 className="text-xl font-bold">{switchInfo.title}</h2>
+                  <p className="text-gray-300">{switchInfo.dates}</p>
+                  <p className="text-sm text-gray-400 mt-1">📍 {switchInfo.venue.name}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Links */}
+            <div className="grid grid-cols-2 gap-3">
+              <a 
+                href={switchInfo.zoom.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-blue-500/20 border border-blue-500/30 rounded-xl p-4 text-center hover:bg-blue-500/30 transition-colors"
+              >
+                <div className="text-2xl mb-1">📹</div>
+                <div className="text-sm font-medium">Zoom Meeting</div>
+                <div className="text-xs text-gray-400 mt-1">ID: {switchInfo.zoom.meetingId}</div>
+              </a>
+              <a 
+                href={switchInfo.venue.mapLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-green-500/20 border border-green-500/30 rounded-xl p-4 text-center hover:bg-green-500/30 transition-colors"
+              >
+                <div className="text-2xl mb-1">📍</div>
+                <div className="text-sm font-medium">Venue</div>
+                <div className="text-xs text-gray-400 mt-1">Goe Tech Center</div>
+              </a>
+            </div>
+
+            {/* Your Presentations Highlight */}
+            <div className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 rounded-2xl p-5">
+              <h3 className="text-lg font-bold text-amber-400 mb-3">⭐ Le Tue Presentazioni</h3>
+              {yourPresentations.map((pres, i) => (
+                <div key={i} className="space-y-3">
+                  <div className="text-sm text-gray-300">
+                    <span className="font-medium">{pres.day}</span> • {pres.time}
+                  </div>
+                  <div className="text-white font-semibold">{pres.title}</div>
+                  {pres.items.map((item, j) => (
+                    <div key={j} className="bg-white/5 rounded-xl p-3 ml-2 border-l-2 border-amber-500">
+                      <div className="font-medium">{item.title}</div>
+                      <div className="text-xs text-gray-400">{item.duration} • {item.presenters.join(', ')}</div>
+                      <p className="text-sm text-gray-300 mt-1">{item.description}</p>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+
+            {/* Agenda by Day */}
+            {switchAgenda.map((day, dayIndex) => (
+              <div key={dayIndex} className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                    {day.date}
+                  </div>
+                  <div>
+                    <span className="text-gray-400 text-sm">{day.dayOfWeek}</span>
+                    <span className="text-gray-500 mx-2">•</span>
+                    <span className="font-medium">{day.title}</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  {day.sessions.map((session, sIndex) => {
+                    const getBgColor = () => {
+                      if (session.isYourSession) return 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-500/50';
+                      switch (session.type) {
+                        case 'break': return 'bg-gray-500/10 border-gray-500/20';
+                        case 'meal': return 'bg-green-500/10 border-green-500/20';
+                        case 'visit': return 'bg-purple-500/10 border-purple-500/20';
+                        case 'networking': return 'bg-pink-500/10 border-pink-500/20';
+                        case 'workshop': return 'bg-blue-500/10 border-blue-500/20';
+                        case 'highlight': return 'bg-amber-500/10 border-amber-500/20';
+                        default: return 'bg-white/5 border-white/10';
+                      }
+                    };
+                    
+                    return (
+                      <div 
+                        key={sIndex} 
+                        className={`rounded-xl p-3 border ${getBgColor()} ${session.isYourSession ? 'ring-2 ring-amber-500/50' : ''}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="text-xs text-gray-400 font-mono w-24 flex-shrink-0 pt-0.5">
+                            {session.time}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium flex items-center gap-2">
+                              {session.title}
+                              {session.isYourSession && <span className="text-amber-400 text-xs">⭐ TU</span>}
+                            </div>
+                            {session.description && (
+                              <p className="text-sm text-gray-400 mt-1">{session.description}</p>
+                            )}
+                            {session.speakers && session.speakers.length > 0 && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                👤 {session.speakers.join(', ')}
+                              </p>
+                            )}
+                            {session.location && (
+                              <p className="text-xs text-blue-400 mt-1">
+                                📍 {session.location}
+                              </p>
+                            )}
+                            {session.notes && (
+                              <p className="text-xs text-amber-400/80 mt-1">
+                                💡 {session.notes}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {/* Arrival Dinner Info */}
+            <div className="bg-gradient-to-r from-pink-500/10 to-purple-500/10 border border-pink-500/20 rounded-xl p-4">
+              <h3 className="font-bold mb-2">🍷 Cena di Benvenuto (2 Feb)</h3>
+              <p className="text-sm text-gray-300">{switchInfo.arrivalDinner.place}</p>
+              <p className="text-xs text-gray-400">{switchInfo.arrivalDinner.address}</p>
+              <p className="text-xs text-gray-400 mt-1">⏰ {switchInfo.arrivalDinner.time}</p>
+              <p className="text-xs text-gray-500 mt-1 italic">{switchInfo.arrivalDinner.note}</p>
+            </div>
           </div>
         )}
         
