@@ -122,7 +122,7 @@ export const tripData: DayPlan[] = [
         price: "€134.00",
         class: "Prima classe",
         status: 'confirmed',
-        ticketPdf: "/tickets/tgv-9242.pdf"
+        ticketPdf: "/tickets/tgv-milano-parigi-5WQWQ6.pdf"
       },
       {
         type: 'train',
@@ -133,7 +133,7 @@ export const tripData: DayPlan[] = [
         notes: "⚠️ Cambio stazione a Parigi (metro/taxi)",
         price: "€110.00",
         status: 'confirmed',
-        ticketPdf: "/tickets/tgv-12265.pdf"
+        ticketPdf: "/tickets/tgv-parigi-bordeaux-47ZU26.pdf"
       },
       {
         type: 'car',
