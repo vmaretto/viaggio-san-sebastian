@@ -115,12 +115,14 @@ export const tripData: DayPlan[] = [
     bookings: [
       {
         type: 'train',
-        name: "TGV 9242",
+        name: "TGV INOUI 9242",
         code: "5WQWQ6",
-        time: "~06:30 da Torino Porta Susa",
+        time: "07:19 → 13:19",
         address: "Torino Porta Susa → Paris Gare de Lyon",
+        carriage: "12",
+        seat: "219",
+        class: "1ª Classe - Club Quattro",
         price: "€134.00",
-        class: "Prima classe",
         status: 'confirmed',
         ticketPdf: "/tickets/tgv-milano-parigi-5WQWQ6.pdf"
       },
@@ -394,9 +396,33 @@ export const tripData: DayPlan[] = [
     bookings: [
       {
         type: 'train',
-        name: "Treni ritorno",
-        address: "Bordeaux → Parigi → Milano/Torino → Roma",
-        notes: "DA PRENOTARE",
+        name: "TGV Parigi → Zurigo",
+        code: "VKWQDB",
+        time: "10:22 → ?",
+        address: "Paris Gare de Lyon → Zurich Hb",
+        class: "1ª Classe",
+        status: 'confirmed',
+        ticketPdf: "/tickets/tgv-parigi-zurigo-VKWQDB.pdf",
+        notes: "⚠️ Devi arrivare a Parigi da Bordeaux (treno mattina presto?)"
+      },
+      {
+        type: 'train',
+        name: "EuroCity Zurigo → Milano",
+        code: "RNAPU5",
+        time: "15:33 → 18:50",
+        address: "Zuerich Hb → Milano Centrale",
+        carriage: "9",
+        seat: "22",
+        class: "1ª Classe",
+        price: "€140.00",
+        status: 'confirmed',
+        ticketPdf: "/tickets/Virgilio-Maretto-1856610016Trenitalia.pdf"
+      },
+      {
+        type: 'train',
+        name: "Milano → Roma",
+        address: "Milano Centrale → Roma",
+        notes: "❓ DA PRENOTARE - arrivi a Milano alle 18:50",
         status: 'todo'
       }
     ],
