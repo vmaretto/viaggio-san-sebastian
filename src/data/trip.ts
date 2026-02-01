@@ -414,16 +414,21 @@ export const tripData: DayPlan[] = [
         carriage: "9",
         seat: "22",
         class: "1ª Classe",
-        price: "€140.00",
         status: 'confirmed',
         ticketPdf: "/tickets/Virgilio-Maretto-1856610016Trenitalia.pdf"
       },
       {
         type: 'train',
-        name: "Milano → Roma",
-        address: "Milano Centrale → Roma",
-        notes: "❓ DA PRENOTARE - arrivi a Milano alle 18:50",
-        status: 'todo'
+        name: "Frecciarossa 9663 Milano → Roma",
+        code: "RNAPU5",
+        time: "19:35 → 22:39",
+        address: "Milano Centrale → Roma Termini",
+        carriage: "2",
+        seat: "14D",
+        class: "1° Business",
+        price: "€235.90 (totale Zurigo-Roma)",
+        status: 'confirmed',
+        ticketPdf: "/tickets/Virgilio-Maretto-1856610016Trenitalia.pdf"
       }
     ],
     freeTime: {
