@@ -203,18 +203,10 @@ export const yourPresentations = [
       {
         title: "Data Lake + Smart Counter",
         duration: "15 min",
-        presenters: ["Virgilio Maretto", "Marco Pizzuto"],
-        organization: "CMCC/POSTI",
+        presenters: ["Marco Pizzuto"],
+        organization: "CMCC",
         description: "Demonstration and usage of Data Lake, data upload exercise, communication with Smart Counter",
-        apps: [
-          {
-            name: "Mini Orto",
-            description: "Use case SCIO + webapp per monitoraggio orto",
-            url: "https://mini-orto.vercel.app",
-            github: "https://github.com/vmaretto/MiniOrto",
-            icon: "🌱"
-          }
-        ]
+        apps: []
       },
       {
         title: "MyFreshFood Spectrometer",
@@ -229,6 +221,13 @@ export const yourPresentations = [
             url: "https://sugar-detective.vercel.app",
             github: "https://github.com/vmaretto/sugar-detective",
             icon: "🔬"
+          },
+          {
+            name: "Mini Orto",
+            description: "Use case SCIO + webapp per monitoraggio orto",
+            url: "https://mini-orto.vercel.app",
+            github: "https://github.com/vmaretto/MiniOrto",
+            icon: "🌱"
           }
         ]
       }
@@ -252,6 +251,6 @@ export const demoApps = [
     url: "https://mini-orto.vercel.app",
     github: "https://github.com/vmaretto/MiniOrto",
     icon: "🌱",
-    presentation: "Data Lake + Smart Counter"
+    presentation: "MyFreshFood Spectrometer"
   }
 ];

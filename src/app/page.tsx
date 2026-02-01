@@ -573,6 +573,27 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Personal Notes for SWITCH */}
+            <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-xl p-4">
+              <div className="flex justify-between items-start mb-2">
+                <h4 className="text-sm font-semibold text-indigo-300">📝 Note Meeting</h4>
+                <button
+                  onClick={() => {
+                    setFormData({ note: switchNotes });
+                    setEditModal({ type: 'switchNote', dayIndex: 0 });
+                  }}
+                  className="text-xs text-indigo-400 hover:text-indigo-300"
+                >
+                  ✏️ Modifica
+                </button>
+              </div>
+              {switchNotes ? (
+                <p className="text-sm text-gray-300 whitespace-pre-wrap">{switchNotes}</p>
+              ) : (
+                <p className="text-sm text-gray-500 italic">Aggiungi note per il meeting (domande, cose da ricordare...)</p>
+              )}
+            </div>
+
             {/* Quick Links */}
             <div className="grid grid-cols-2 gap-3">
               <a 
@@ -2078,6 +2099,38 @@ export default function Home() {
             className="flex-1 py-2 bg-pink-500 rounded-lg hover:bg-pink-600 font-medium"
           >
             Aggiungi
+          </button>
+        </div>
+      </Modal>
+
+      {/* SWITCH Notes Modal */}
+      <Modal
+        isOpen={editModal?.type === 'switchNote'}
+        onClose={() => setEditModal(null)}
+        title="📝 Note Meeting SWITCH"
+      >
+        <textarea
+          value={formData.note || ''}
+          onChange={e => setFormData({ ...formData, note: e.target.value })}
+          placeholder="Domande da fare, cose da ricordare, appunti..."
+          className="w-full h-48 bg-white/10 border border-white/20 rounded-xl p-3 text-sm focus:outline-none focus:border-indigo-500 resize-none"
+        />
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={() => setEditModal(null)}
+            className="flex-1 py-2 bg-white/10 rounded-lg hover:bg-white/20"
+          >
+            Annulla
+          </button>
+          <button
+            onClick={() => {
+              setSwitchNotes(formData.note || '');
+              setEditModal(null);
+              setFormData({});
+            }}
+            className="flex-1 py-2 bg-indigo-500 rounded-lg hover:bg-indigo-600 font-medium"
+          >
+            Salva
           </button>
         </div>
       </Modal>
