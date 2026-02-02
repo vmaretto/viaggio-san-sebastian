@@ -73,7 +73,8 @@ export const tripData: DayPlan[] = [
         class: "Business",
         price: "€115.90",
         status: 'confirmed',
-        ticketPdf: "/tickets/Virgilio-Maretto-2737474616.pdf"
+        ticketPdf: "/tickets/Virgilio-Maretto-2737474616.pdf",
+        link: "https://www.trenitalia.com/it/informazioni/ricerca_biglietti.html"
       },
       {
         type: 'hotel',
@@ -124,7 +125,8 @@ export const tripData: DayPlan[] = [
         class: "1ª Classe - Club Quattro",
         price: "€134.00",
         status: 'confirmed',
-        ticketPdf: "/tickets/tgv-milano-parigi-5WQWQ6.pdf"
+        ticketPdf: "/tickets/tgv-milano-parigi-5WQWQ6.pdf",
+        link: "https://www.sncf-connect.com/app/trips"
       },
       {
         type: 'train',
@@ -138,7 +140,8 @@ export const tripData: DayPlan[] = [
         notes: "⚠️ Cambio stazione a Parigi (metro/taxi)",
         price: "€110.00",
         status: 'confirmed',
-        ticketPdf: "/tickets/tgv-parigi-bordeaux-47ZU26.pdf"
+        ticketPdf: "/tickets/tgv-parigi-bordeaux-47ZU26.pdf",
+        link: "https://www.sncf-connect.com/app/trips"
       },
       {
         type: 'car',
@@ -408,6 +411,7 @@ export const tripData: DayPlan[] = [
         class: "1ª Classe",
         status: 'confirmed',
         ticketPdf: "/tickets/tgv-parigi-zurigo-VKWQDB.pdf",
+        link: "https://www.sncf-connect.com/app/trips",
         notes: "⚠️ Devi arrivare a Parigi da Bordeaux (treno mattina presto?)"
       },
       {
@@ -420,7 +424,8 @@ export const tripData: DayPlan[] = [
         seat: "22",
         class: "1ª Classe",
         status: 'confirmed',
-        ticketPdf: "/tickets/Virgilio-Maretto-1856610016Trenitalia.pdf"
+        ticketPdf: "/tickets/Virgilio-Maretto-1856610016Trenitalia.pdf",
+        link: "https://www.trenitalia.com/it/informazioni/ricerca_biglietti.html"
       },
       {
         type: 'train',
@@ -433,7 +438,8 @@ export const tripData: DayPlan[] = [
         class: "1° Business",
         price: "€235.90 (totale Zurigo-Roma)",
         status: 'confirmed',
-        ticketPdf: "/tickets/Virgilio-Maretto-1856610016Trenitalia.pdf"
+        ticketPdf: "/tickets/Virgilio-Maretto-1856610016Trenitalia.pdf",
+        link: "https://www.trenitalia.com/it/informazioni/ricerca_biglietti.html"
       }
     ],
     freeTime: {

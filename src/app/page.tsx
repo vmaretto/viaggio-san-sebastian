@@ -929,16 +929,30 @@ export default function Home() {
                                 </div>
                               )}
                               
-                              {/* Train: Ticket PDF Button */}
-                              {booking.type === 'train' && booking.ticketPdf && (
-                                <a 
-                                  href={booking.ticketPdf}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                                >
-                                  🎫 Apri Biglietto
-                                </a>
+                              {/* Train: Ticket Buttons */}
+                              {booking.type === 'train' && (booking.ticketPdf || booking.link) && (
+                                <div className="flex flex-wrap gap-2">
+                                  {booking.ticketPdf && (
+                                    <a 
+                                      href={booking.ticketPdf}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                                    >
+                                      🎫 Biglietto PDF
+                                    </a>
+                                  )}
+                                  {booking.link && (
+                                    <a 
+                                      href={booking.link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                                    >
+                                      🌐 Gestisci Online
+                                    </a>
+                                  )}
+                                </div>
                               )}
                               
                               {booking.code && (
@@ -956,7 +970,7 @@ export default function Home() {
                               )}
                               {booking.price && <p className="text-sm text-green-400">💰 {booking.price}</p>}
                               {booking.notes && <p className="text-sm text-gray-500 italic">📝 {booking.notes}</p>}
-                              {booking.link && (
+                              {booking.link && booking.type !== 'train' && (
                                 <a 
                                   href={booking.link} 
                                   target="_blank" 
