@@ -353,23 +353,36 @@ export default function Home() {
   const [customFilms, setCustomFilms] = useLocalStorage<Array<{id: string; title: string; genre: string; duration: string; description: string; streaming: string}>>('trip-custom-films', []);
   const [switchNotes, setSwitchNotes] = useLocalStorage<string>('trip-switch-notes', '');
   
-  // Trip Tasks (todo list)
+  // Trip Tasks (todo list) - organized by leg/tratta
   const [tripTasks, setTripTasks] = useLocalStorage<Array<{
     id: string;
     text: string;
     completed: boolean;
-    category: 'urgent' | 'booking' | 'work' | 'other';
+    leg: string; // tratta/percorso
     createdAt: string;
-  }>>('trip-tasks', [
-    { id: '1', text: 'Prenotare auto Bordeaux', completed: false, category: 'booking', createdAt: '2026-02-02' },
-    { id: '2', text: 'Prenotare hotel Bordeaux (5 Feb)', completed: false, category: 'booking', createdAt: '2026-02-02' },
-    { id: '3', text: 'Check Sugar Detective', completed: false, category: 'work', createdAt: '2026-02-02' },
-    { id: '4', text: 'Check Mini Orto', completed: false, category: 'work', createdAt: '2026-02-02' },
-    { id: '5', text: 'Inserire Analytics nelle app', completed: false, category: 'work', createdAt: '2026-02-02' },
-    { id: '6', text: 'Email Luigi Saviolo', completed: false, category: 'other', createdAt: '2026-02-02' },
-    { id: '7', text: 'Email Giuseppe Peccentino', completed: false, category: 'other', createdAt: '2026-02-02' },
-    { id: '8', text: 'All-A-Fly', completed: false, category: 'other', createdAt: '2026-02-02' },
+  }>>('trip-tasks-v2', [
+    // 2 Feb - Torino → Parigi
+    { id: '1', text: 'Prenotare auto Bordeaux', completed: false, leg: 'torino-parigi', createdAt: '2026-02-02' },
+    { id: '2', text: 'Prenotare hotel Bordeaux (5 Feb)', completed: false, leg: 'torino-parigi', createdAt: '2026-02-02' },
+    { id: '3', text: 'Check Sugar Detective', completed: false, leg: 'torino-parigi', createdAt: '2026-02-02' },
+    { id: '4', text: 'Check Mini Orto', completed: false, leg: 'torino-parigi', createdAt: '2026-02-02' },
+    { id: '5', text: 'Inserire Analytics nelle app', completed: false, leg: 'torino-parigi', createdAt: '2026-02-02' },
+    // 2 Feb - Parigi → Bordeaux
+    { id: '6', text: 'Email Luigi Saviolo', completed: false, leg: 'parigi-bordeaux', createdAt: '2026-02-02' },
+    { id: '7', text: 'Email Giuseppe Peccentino', completed: false, leg: 'parigi-bordeaux', createdAt: '2026-02-02' },
+    { id: '8', text: 'All-A-Fly', completed: false, leg: 'parigi-bordeaux', createdAt: '2026-02-02' },
+    // 6 Feb - Ritorno
+    { id: '9', text: 'Backup foto viaggio', completed: false, leg: 'ritorno', createdAt: '2026-02-02' },
   ]);
+  
+  // Define legs/tratte
+  const tripLegs = [
+    { id: 'torino-parigi', label: '🚄 Torino → Parigi', time: '2 Feb • 07:19-13:19', duration: '6h' },
+    { id: 'parigi-bordeaux', label: '🚄 Parigi → Bordeaux', time: '2 Feb • 14:05-16:30', duration: '2h 25min' },
+    { id: 'san-sebastian', label: '🏖️ San Sebastián', time: '2-5 Feb', duration: 'Tempo libero' },
+    { id: 'ritorno', label: '🏠 Ritorno', time: '6 Feb', duration: '~12h treno' },
+    { id: 'altro', label: '📝 Altro', time: '', duration: '' },
+  ];
   
   // Diary entries with photos
   const [diaryEntries, setDiaryEntries] = useLocalStorage<Array<{
@@ -619,7 +632,7 @@ export default function Home() {
               <h2 className="text-xl font-bold flex items-center gap-2">📋 Task Viaggio</h2>
               <button
                 onClick={() => {
-                  setFormData({ category: 'other' });
+                  setFormData({ leg: 'altro' });
                   setEditModal({ type: 'task' as any, dayIndex: 0 });
                 }}
                 className="text-sm bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-medium"
@@ -644,51 +657,64 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Tasks by category */}
-            {(['urgent', 'booking', 'work', 'other'] as const).map(category => {
-              const categoryTasks = tripTasks.filter(t => t.category === category);
-              if (categoryTasks.length === 0) return null;
+            {/* Tasks by leg/tratta */}
+            {tripLegs.map(leg => {
+              const legTasks = tripTasks.filter(t => t.leg === leg.id);
+              if (legTasks.length === 0) return null;
               
-              const categoryLabels = {
-                urgent: { label: '🔴 Urgenti', color: 'text-red-400' },
-                booking: { label: '🎫 Prenotazioni', color: 'text-blue-400' },
-                work: { label: '💼 Lavoro', color: 'text-purple-400' },
-                other: { label: '📝 Altro', color: 'text-gray-400' }
-              };
+              const completedCount = legTasks.filter(t => t.completed).length;
+              const allCompleted = completedCount === legTasks.length;
               
               return (
-                <div key={category} className="space-y-2">
-                  <h3 className={`text-sm font-semibold ${categoryLabels[category].color}`}>
-                    {categoryLabels[category].label}
-                  </h3>
-                  {categoryTasks.map(task => (
-                    <div 
-                      key={task.id}
-                      className={`flex items-center gap-3 bg-white/5 rounded-lg px-4 py-3 ${task.completed ? 'opacity-50' : ''}`}
-                    >
-                      <button
-                        onClick={() => {
-                          setTripTasks(tripTasks.map(t => 
-                            t.id === task.id ? { ...t, completed: !t.completed } : t
-                          ));
-                        }}
-                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
-                          task.completed ? 'bg-green-500 border-green-500' : 'border-gray-500 hover:border-green-500'
-                        }`}
-                      >
-                        {task.completed && <span className="text-sm">✓</span>}
-                      </button>
-                      <span className={`flex-1 ${task.completed ? 'line-through text-gray-500' : ''}`}>
-                        {task.text}
-                      </span>
-                      <button
-                        onClick={() => setTripTasks(tripTasks.filter(t => t.id !== task.id))}
-                        className="text-red-400 hover:text-red-300 p-1"
-                      >
-                        🗑️
-                      </button>
+                <div key={leg.id} className={`rounded-xl overflow-hidden ${allCompleted ? 'opacity-60' : ''}`}>
+                  {/* Leg header */}
+                  <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 px-4 py-3 border-b border-white/10">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="font-bold">{leg.label}</h3>
+                        {leg.time && (
+                          <p className="text-xs text-gray-400">{leg.time} • {leg.duration}</p>
+                        )}
+                      </div>
+                      <div className="text-sm">
+                        <span className={completedCount === legTasks.length ? 'text-green-400' : 'text-gray-400'}>
+                          {completedCount}/{legTasks.length}
+                        </span>
+                      </div>
                     </div>
-                  ))}
+                  </div>
+                  
+                  {/* Tasks */}
+                  <div className="bg-white/5">
+                    {legTasks.map(task => (
+                      <div 
+                        key={task.id}
+                        className={`flex items-center gap-3 px-4 py-3 border-b border-white/5 last:border-b-0 ${task.completed ? 'opacity-50' : ''}`}
+                      >
+                        <button
+                          onClick={() => {
+                            setTripTasks(tripTasks.map(t => 
+                              t.id === task.id ? { ...t, completed: !t.completed } : t
+                            ));
+                          }}
+                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
+                            task.completed ? 'bg-green-500 border-green-500' : 'border-gray-500 hover:border-green-500'
+                          }`}
+                        >
+                          {task.completed && <span className="text-sm">✓</span>}
+                        </button>
+                        <span className={`flex-1 ${task.completed ? 'line-through text-gray-500' : ''}`}>
+                          {task.text}
+                        </span>
+                        <button
+                          onClick={() => setTripTasks(tripTasks.filter(t => t.id !== task.id))}
+                          className="text-red-400 hover:text-red-300 p-1"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               );
             })}
@@ -2383,16 +2409,15 @@ export default function Home() {
             />
           </div>
           <div>
-            <label className="text-xs text-gray-400">Categoria</label>
+            <label className="text-xs text-gray-400">Tratta</label>
             <select
-              value={formData.category || 'other'}
-              onChange={e => setFormData({ ...formData, category: e.target.value })}
+              value={formData.leg || 'altro'}
+              onChange={e => setFormData({ ...formData, leg: e.target.value })}
               className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
             >
-              <option value="urgent">🔴 Urgente</option>
-              <option value="booking">🎫 Prenotazione</option>
-              <option value="work">💼 Lavoro</option>
-              <option value="other">📝 Altro</option>
+              {tripLegs.map(leg => (
+                <option key={leg.id} value={leg.id}>{leg.label}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -2410,7 +2435,7 @@ export default function Home() {
                   id: Date.now().toString(),
                   text: formData.text,
                   completed: false,
-                  category: (formData.category || 'other') as 'urgent' | 'booking' | 'work' | 'other',
+                  leg: formData.leg || 'altro',
                   createdAt: new Date().toISOString()
                 }]);
                 setEditModal(null);
