@@ -334,7 +334,7 @@ export default function Home() {
   // ============================================
   // STATE
   // ============================================
-  const [activeTab, setActiveTab] = useState<'itinerary' | 'switch' | 'san-sebastian' | 'bilbao' | 'bookings' | 'entertainment' | 'checklist'>('itinerary');
+  const [activeTab, setActiveTab] = useState<'itinerary' | 'switch' | 'san-sebastian' | 'bilbao' | 'bookings' | 'entertainment' | 'checklist' | 'tasks' | 'diary'>('itinerary');
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([0]));
   
   // Persistent state (localStorage)
@@ -352,6 +352,35 @@ export default function Home() {
   const [customBilbao, setCustomBilbao] = useLocalStorage<Array<{id: string; name: string; description: string}>>('trip-custom-bilbao', []);
   const [customFilms, setCustomFilms] = useLocalStorage<Array<{id: string; title: string; genre: string; duration: string; description: string; streaming: string}>>('trip-custom-films', []);
   const [switchNotes, setSwitchNotes] = useLocalStorage<string>('trip-switch-notes', '');
+  
+  // Trip Tasks (todo list)
+  const [tripTasks, setTripTasks] = useLocalStorage<Array<{
+    id: string;
+    text: string;
+    completed: boolean;
+    category: 'urgent' | 'booking' | 'work' | 'other';
+    createdAt: string;
+  }>>('trip-tasks', [
+    { id: '1', text: 'Prenotare auto Bordeaux', completed: false, category: 'booking', createdAt: '2026-02-02' },
+    { id: '2', text: 'Prenotare hotel Bordeaux (5 Feb)', completed: false, category: 'booking', createdAt: '2026-02-02' },
+    { id: '3', text: 'Check Sugar Detective', completed: false, category: 'work', createdAt: '2026-02-02' },
+    { id: '4', text: 'Check Mini Orto', completed: false, category: 'work', createdAt: '2026-02-02' },
+    { id: '5', text: 'Inserire Analytics nelle app', completed: false, category: 'work', createdAt: '2026-02-02' },
+    { id: '6', text: 'Email Luigi Saviolo', completed: false, category: 'other', createdAt: '2026-02-02' },
+    { id: '7', text: 'Email Giuseppe Peccentino', completed: false, category: 'other', createdAt: '2026-02-02' },
+    { id: '8', text: 'All-A-Fly', completed: false, category: 'other', createdAt: '2026-02-02' },
+  ]);
+  
+  // Diary entries with photos
+  const [diaryEntries, setDiaryEntries] = useLocalStorage<Array<{
+    id: string;
+    date: string;
+    title: string;
+    text: string;
+    photos: string[]; // base64 encoded
+    location?: string;
+    createdAt: string;
+  }>>('trip-diary', []);
   
   // Modal state
   const [editModal, setEditModal] = useState<{ type: 'note' | 'booking' | 'activity' | 'editBooking' | 'pintxo' | 'mustSee' | 'bilbaoPlace' | 'film' | 'switchNote'; dayIndex: number; booking?: CustomBooking } | null>(null);
@@ -547,6 +576,8 @@ export default function Home() {
           <div className="flex overflow-x-auto py-3 gap-2 scrollbar-hide">
             {[
               { id: 'itinerary', label: '📅 Itinerario', icon: '📅' },
+              { id: 'tasks', label: '📋 Task', icon: '📋' },
+              { id: 'diary', label: '📔 Diario', icon: '📔' },
               { id: 'switch', label: '💼 SWITCH', icon: '💼' },
               { id: 'san-sebastian', label: '🍷 San Sebastián', icon: '🍷' },
               { id: 'bilbao', label: '🏛️ Bilbao', icon: '🏛️' },
@@ -578,6 +609,153 @@ export default function Home() {
           <div className="space-y-6">
             <h2 className="text-xl font-bold flex items-center gap-2">✅ Checklist Bagagli</h2>
             <PackingChecklist items={checklist} setItems={setChecklist} />
+          </div>
+        )}
+
+        {/* TASKS TAB */}
+        {activeTab === 'tasks' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold flex items-center gap-2">📋 Task Viaggio</h2>
+              <button
+                onClick={() => {
+                  setFormData({ category: 'other' });
+                  setEditModal({ type: 'task' as any, dayIndex: 0 });
+                }}
+                className="text-sm bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-medium"
+              >
+                + Aggiungi
+              </button>
+            </div>
+            
+            {/* Progress */}
+            <div className="bg-white/5 rounded-xl p-4">
+              <div className="flex justify-between text-sm mb-2">
+                <span>Completati</span>
+                <span className="text-green-400">
+                  {tripTasks.filter(t => t.completed).length}/{tripTasks.length}
+                </span>
+              </div>
+              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-green-500 transition-all duration-300"
+                  style={{ width: tripTasks.length > 0 ? `${(tripTasks.filter(t => t.completed).length / tripTasks.length) * 100}%` : '0%' }}
+                />
+              </div>
+            </div>
+
+            {/* Tasks by category */}
+            {(['urgent', 'booking', 'work', 'other'] as const).map(category => {
+              const categoryTasks = tripTasks.filter(t => t.category === category);
+              if (categoryTasks.length === 0) return null;
+              
+              const categoryLabels = {
+                urgent: { label: '🔴 Urgenti', color: 'text-red-400' },
+                booking: { label: '🎫 Prenotazioni', color: 'text-blue-400' },
+                work: { label: '💼 Lavoro', color: 'text-purple-400' },
+                other: { label: '📝 Altro', color: 'text-gray-400' }
+              };
+              
+              return (
+                <div key={category} className="space-y-2">
+                  <h3 className={`text-sm font-semibold ${categoryLabels[category].color}`}>
+                    {categoryLabels[category].label}
+                  </h3>
+                  {categoryTasks.map(task => (
+                    <div 
+                      key={task.id}
+                      className={`flex items-center gap-3 bg-white/5 rounded-lg px-4 py-3 ${task.completed ? 'opacity-50' : ''}`}
+                    >
+                      <button
+                        onClick={() => {
+                          setTripTasks(tripTasks.map(t => 
+                            t.id === task.id ? { ...t, completed: !t.completed } : t
+                          ));
+                        }}
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                          task.completed ? 'bg-green-500 border-green-500' : 'border-gray-500 hover:border-green-500'
+                        }`}
+                      >
+                        {task.completed && <span className="text-sm">✓</span>}
+                      </button>
+                      <span className={`flex-1 ${task.completed ? 'line-through text-gray-500' : ''}`}>
+                        {task.text}
+                      </span>
+                      <button
+                        onClick={() => setTripTasks(tripTasks.filter(t => t.id !== task.id))}
+                        className="text-red-400 hover:text-red-300 p-1"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* DIARY TAB */}
+        {activeTab === 'diary' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold flex items-center gap-2">📔 Diario di Viaggio</h2>
+              <button
+                onClick={() => {
+                  setFormData({ date: new Date().toISOString().split('T')[0] });
+                  setEditModal({ type: 'diary' as any, dayIndex: 0 });
+                }}
+                className="text-sm bg-amber-500 hover:bg-amber-600 px-4 py-2 rounded-lg font-medium"
+              >
+                + Nuova Entry
+              </button>
+            </div>
+
+            {diaryEntries.length === 0 ? (
+              <div className="text-center py-12 text-gray-400">
+                <div className="text-4xl mb-4">📷</div>
+                <p>Nessuna entry ancora.</p>
+                <p className="text-sm">Inizia a documentare il tuo viaggio!</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {diaryEntries.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(entry => (
+                  <div key={entry.id} className="bg-white/5 rounded-2xl overflow-hidden">
+                    {/* Photos carousel */}
+                    {entry.photos.length > 0 && (
+                      <div className="relative h-48 overflow-x-auto flex gap-1 snap-x snap-mandatory">
+                        {entry.photos.map((photo, i) => (
+                          <img 
+                            key={i}
+                            src={photo}
+                            alt={`Photo ${i + 1}`}
+                            className="h-full w-auto object-cover snap-center"
+                          />
+                        ))}
+                      </div>
+                    )}
+                    <div className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="font-bold">{entry.title}</h3>
+                          <p className="text-xs text-gray-400">
+                            {new Date(entry.date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}
+                            {entry.location && ` • 📍 ${entry.location}`}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setDiaryEntries(diaryEntries.filter(e => e.id !== entry.id))}
+                          className="text-red-400 hover:text-red-300 p-1"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                      <p className="text-sm text-gray-300 whitespace-pre-wrap">{entry.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -2181,6 +2359,168 @@ export default function Home() {
               setFormData({});
             }}
             className="flex-1 py-2 bg-indigo-500 rounded-lg hover:bg-indigo-600 font-medium"
+          >
+            Salva
+          </button>
+        </div>
+      </Modal>
+
+      {/* Add Task Modal */}
+      <Modal
+        isOpen={(editModal?.type as string) === 'task'}
+        onClose={() => setEditModal(null)}
+        title="📋 Nuovo Task"
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-400">Task *</label>
+            <input
+              type="text"
+              value={formData.text || ''}
+              onChange={e => setFormData({ ...formData, text: e.target.value })}
+              placeholder="es. Prenotare ristorante"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Categoria</label>
+            <select
+              value={formData.category || 'other'}
+              onChange={e => setFormData({ ...formData, category: e.target.value })}
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            >
+              <option value="urgent">🔴 Urgente</option>
+              <option value="booking">🎫 Prenotazione</option>
+              <option value="work">💼 Lavoro</option>
+              <option value="other">📝 Altro</option>
+            </select>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={() => setEditModal(null)}
+            className="flex-1 py-2 bg-white/10 rounded-lg hover:bg-white/20"
+          >
+            Annulla
+          </button>
+          <button
+            onClick={() => {
+              if (formData.text) {
+                setTripTasks([...tripTasks, {
+                  id: Date.now().toString(),
+                  text: formData.text,
+                  completed: false,
+                  category: (formData.category || 'other') as 'urgent' | 'booking' | 'work' | 'other',
+                  createdAt: new Date().toISOString()
+                }]);
+                setEditModal(null);
+                setFormData({});
+              }
+            }}
+            className="flex-1 py-2 bg-blue-500 rounded-lg hover:bg-blue-600 font-medium"
+          >
+            Aggiungi
+          </button>
+        </div>
+      </Modal>
+
+      {/* Add Diary Entry Modal */}
+      <Modal
+        isOpen={(editModal?.type as string) === 'diary'}
+        onClose={() => setEditModal(null)}
+        title="📔 Nuova Entry Diario"
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-400">Titolo *</label>
+            <input
+              type="text"
+              value={formData.title || ''}
+              onChange={e => setFormData({ ...formData, title: e.target.value })}
+              placeholder="es. Arrivo a San Sebastián!"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Data</label>
+            <input
+              type="date"
+              value={formData.date || new Date().toISOString().split('T')[0]}
+              onChange={e => setFormData({ ...formData, date: e.target.value })}
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Luogo</label>
+            <input
+              type="text"
+              value={formData.location || ''}
+              onChange={e => setFormData({ ...formData, location: e.target.value })}
+              placeholder="es. Parte Vieja"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Testo</label>
+            <textarea
+              value={formData.diaryText || ''}
+              onChange={e => setFormData({ ...formData, diaryText: e.target.value })}
+              placeholder="Racconta la tua giornata..."
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1 h-24 resize-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">Foto</label>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={async (e) => {
+                const files = Array.from(e.target.files || []);
+                const photos: string[] = [];
+                for (const file of files) {
+                  const reader = new FileReader();
+                  const base64 = await new Promise<string>((resolve) => {
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.readAsDataURL(file);
+                  });
+                  photos.push(base64);
+                }
+                setFormData({ ...formData, photos: JSON.stringify(photos) });
+              }}
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mt-1 text-sm file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-sm file:bg-amber-500 file:text-white"
+            />
+            {formData.photos && JSON.parse(formData.photos).length > 0 && (
+              <p className="text-xs text-green-400 mt-1">
+                ✓ {JSON.parse(formData.photos).length} foto selezionate
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={() => setEditModal(null)}
+            className="flex-1 py-2 bg-white/10 rounded-lg hover:bg-white/20"
+          >
+            Annulla
+          </button>
+          <button
+            onClick={() => {
+              if (formData.title) {
+                setDiaryEntries([...diaryEntries, {
+                  id: Date.now().toString(),
+                  date: formData.date || new Date().toISOString().split('T')[0],
+                  title: formData.title,
+                  text: formData.diaryText || '',
+                  photos: formData.photos ? JSON.parse(formData.photos) : [],
+                  location: formData.location,
+                  createdAt: new Date().toISOString()
+                }]);
+                setEditModal(null);
+                setFormData({});
+              }
+            }}
+            className="flex-1 py-2 bg-amber-500 rounded-lg hover:bg-amber-600 font-medium"
           >
             Salva
           </button>
