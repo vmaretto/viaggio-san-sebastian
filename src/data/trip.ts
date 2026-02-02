@@ -148,12 +148,14 @@ export const tripData: DayPlan[] = [
       },
       {
         type: 'car',
-        name: "Noleggio Auto Bordeaux",
-        address: "Bordeaux Stazione Saint-Jean",
-        time: "Ritiro ~17:00 • Riconsegna 5 feb",
-        link: "https://www.discovercars.com/it/search?pickup=Bordeaux%20Train%20Station&pickup_date=2026-02-02&pickup_time=17:00&return_date=2026-02-05&return_time=20:00",
-        notes: "Da €95 (piccola) a €200 (minivan)",
-        status: 'pending'
+        name: "RentScape - Renault Clio",
+        code: "D012917993",
+        phone: "+33 0 556 925 970",
+        address: "195 Cours de la Marne, Bordeaux Train Station Saint-Jean",
+        time: "Ritiro 16:00 • Riconsegna 5 feb 22:00",
+        price: "€232.33 (€156.58 al ritiro)",
+        notes: "⚠️ Deposito €1300 su carta CREDITO (no debito!) • 1000 km inclusi • Pieno→Pieno",
+        status: 'confirmed'
       },
       {
         type: 'hotel',
