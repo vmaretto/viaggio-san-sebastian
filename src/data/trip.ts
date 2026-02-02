@@ -28,6 +28,7 @@ export interface Activity {
 
 export interface DayPlan {
   date: string;
+  isoDate: string; // YYYY-MM-DD for comparison
   dayOfWeek: string;
   title: string;
   subtitle: string;
@@ -56,6 +57,7 @@ export interface DayPlan {
 export const tripData: DayPlan[] = [
   {
     date: "1 Febbraio",
+    isoDate: "2026-02-01",
     dayOfWeek: "Domenica",
     title: "Roma → Torino",
     subtitle: "Partenza e cena stellata",
@@ -108,6 +110,7 @@ export const tripData: DayPlan[] = [
   },
   {
     date: "2 Febbraio",
+    isoDate: "2026-02-02",
     dayOfWeek: "Lunedì",
     title: "Torino → San Sebastián",
     subtitle: "Road trip epico attraverso Francia e Paesi Baschi",
@@ -206,6 +209,7 @@ export const tripData: DayPlan[] = [
   },
   {
     date: "2 Febbraio",
+    isoDate: "2026-02-02",
     dayOfWeek: "Lunedì sera",
     title: "Cena SWITCH",
     subtitle: "Benvenuto con il team",
@@ -228,6 +232,7 @@ export const tripData: DayPlan[] = [
   },
   {
     date: "3 Febbraio",
+    isoDate: "2026-02-03",
     dayOfWeek: "Martedì",
     title: "SWITCH Day 1",
     subtitle: "Consortium Meeting",
@@ -265,6 +270,7 @@ export const tripData: DayPlan[] = [
   },
   {
     date: "4 Febbraio",
+    isoDate: "2026-02-04",
     dayOfWeek: "Mercoledì",
     title: "SWITCH Day 2",
     subtitle: "Consortium Meeting + Gita Bilbao?",
@@ -314,6 +320,7 @@ export const tripData: DayPlan[] = [
   },
   {
     date: "5 Febbraio",
+    isoDate: "2026-02-05",
     dayOfWeek: "Giovedì",
     title: "SWITCH Day 3 → Bordeaux",
     subtitle: "Ultimo giorno meeting e ritorno",
@@ -394,6 +401,7 @@ export const tripData: DayPlan[] = [
   },
   {
     date: "6 Febbraio",
+    isoDate: "2026-02-06",
     dayOfWeek: "Venerdì",
     title: "Bordeaux → Roma",
     subtitle: "Rientro",

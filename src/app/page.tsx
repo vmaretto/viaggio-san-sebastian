@@ -358,6 +358,29 @@ export default function Home() {
   const [formData, setFormData] = useState<Record<string, string>>({});
 
   // ============================================
+  // DATE HELPERS
+  // ============================================
+  
+  const getDayStatus = (isoDate: string): 'past' | 'today' | 'future' => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dayDate = new Date(isoDate);
+    dayDate.setHours(0, 0, 0, 0);
+    
+    if (dayDate < today) return 'past';
+    if (dayDate.getTime() === today.getTime()) return 'today';
+    return 'future';
+  };
+
+  // Auto-expand today's day on mount
+  useEffect(() => {
+    const todayIndex = initialTripData.findIndex(day => getDayStatus(day.isoDate) === 'today');
+    if (todayIndex !== -1) {
+      setExpandedDays(new Set([todayIndex]));
+    }
+  }, []);
+
+  // ============================================
   // HANDLERS
   // ============================================
   
@@ -801,11 +824,16 @@ export default function Home() {
                 ...(day.freeTime?.suggestions || []).map((a, i) => ({ ...a, id: `orig-${i}`, isCustom: false })),
                 ...(customActivities[index] || [])
               ];
+              const dayStatus = getDayStatus(day.isoDate);
               
               return (
                 <div 
                   key={index} 
-                  className="day-card overflow-hidden card-hover"
+                  className={`day-card overflow-hidden card-hover transition-all ${
+                    dayStatus === 'past' ? 'opacity-50' : ''
+                  } ${
+                    dayStatus === 'today' ? 'ring-2 ring-green-500 ring-offset-2 ring-offset-slate-900' : ''
+                  }`}
                 >
                   {/* Day Header - Clickable */}
                   <div 
@@ -820,6 +848,16 @@ export default function Home() {
                             {day.dayOfWeek}
                           </span>
                           <span className="text-xs text-gray-400">{day.date}</span>
+                          {dayStatus === 'past' && (
+                            <span className="text-xs px-2 py-1 rounded-full bg-gray-500/30 text-gray-400">
+                              ✓ Completato
+                            </span>
+                          )}
+                          {dayStatus === 'today' && (
+                            <span className="text-xs px-2 py-1 rounded-full bg-green-500/30 text-green-400 font-bold animate-pulse">
+                              📍 OGGI
+                            </span>
+                          )}
                         </div>
                         <h3 className="text-xl font-bold">{day.title}</h3>
                         <p className="text-gray-400 text-sm">{day.subtitle}</p>
